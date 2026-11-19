@@ -51,9 +51,16 @@ const de = {
     checkEmail: "Fast geschafft: Bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben.",
     invalidCredentials: "E-Mail oder Passwort ist falsch.",
     passwordTooShort: "Das Passwort muss mindestens 8 Zeichen haben.",
+    confirmedSignIn: "E-Mail bestätigt. Melde dich jetzt mit deinem Passwort an.",
     confirmFailed: "Der Bestätigungslink ist ungültig oder abgelaufen.",
   },
   setup: {
+    databaseTitle: "Datenbank noch nicht eingerichtet",
+    databaseText: "Die App ist mit Supabase verbunden, aber die Tabellen fehlen. Öffne in Supabase den SQL Editor und führe die beiden Dateien aus supabase/migrations aus (Schritt 2 in docs/SETUP.md). Danach diese Seite neu laden.",
+    errorTitle: "Da ist etwas schiefgelaufen",
+    errorText: "Lade die Seite neu. Wenn der Fehler bleibt, schick mir einen Screenshot mit dem Fehlercode.",
+    toApp: "Zur App",
+
     title: "Einrichtung fehlt",
     text: "Die App ist noch nicht mit Supabase verbunden. Trage NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY als Umgebungsvariablen ein (siehe docs/SETUP.md).",
   },

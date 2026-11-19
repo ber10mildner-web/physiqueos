@@ -6,6 +6,15 @@ const PUBLIC_PATHS = ["/login", "/auth", "/setup", "/manifest.webmanifest", "/ic
 
 /** Refreshes the auth session on every request and redirects signed-out users to /login. */
 export async function updateSession(request: NextRequest) {
+  // Supabase falls back to the Site URL (e.g. "/?code=…") when the redirect URL
+  // is not on its allow list. Route such links to the callback handler.
+  const { pathname, searchParams } = request.nextUrl;
+  if (!pathname.startsWith("/auth/") && (searchParams.has("code") || searchParams.has("token_hash"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
   const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
   if (!isSupabaseConfigured()) {
     if (isPublic) return NextResponse.next({ request });

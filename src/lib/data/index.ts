@@ -3,9 +3,22 @@ import "server-only";
  * Data access layer. All reads go through the signed-in user's Supabase client,
  * so Row Level Security applies. A future MCP server for Claude will reuse these.
  */
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sanitizeNutrients } from "@/lib/nutrition/nutrients";
 import type { DiaryEntry, Food, NutritionGoal, Profile, ProgressPhoto, WeightEntry } from "./types";
+
+/**
+ * Throws database errors, except "table does not exist" (migrations not run yet),
+ * which sends the user to a setup hint instead of a generic server error.
+ */
+function check(error: { code?: string; message?: string } | null): void {
+  if (!error) return;
+  if (error.code === "PGRST205" || error.code === "42P01" || /does not exist|schema cache/i.test(error.message ?? "")) {
+    redirect("/setup?reason=database");
+  }
+  throw error;
+}
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
@@ -16,7 +29,7 @@ export async function getProfile(): Promise<Profile | null> {
     .select("id, display_name, locale, sex, birth_date, height_cm, activity_level")
     .eq("id", userId)
     .maybeSingle();
-  if (error) throw error;
+  check(error);
   return data ? { ...data, height_cm: num(data.height_cm) } as Profile : null;
 }
 
@@ -31,7 +44,7 @@ export async function getGoalOn(date: string): Promise<NutritionGoal | null> {
     .order("valid_from", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
+  check(error);
   return data as NutritionGoal | null;
 }
 
@@ -51,7 +64,7 @@ export async function getDiary(date: string): Promise<DiaryEntry[]> {
     .eq("user_id", userId)
     .eq("entry_date", date)
     .order("created_at", { ascending: true });
-  if (error) throw error;
+  check(error);
   return (data ?? []).map(mapEntry);
 }
 
@@ -75,7 +88,7 @@ export async function getRecentFoods(limit = 12): Promise<Food[]> {
     .not("food_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(150);
-  if (error) throw error;
+  check(error);
   const ids: string[] = [];
   for (const r of data ?? []) {
     if (r.food_id && !ids.includes(r.food_id)) ids.push(r.food_id);
@@ -83,7 +96,7 @@ export async function getRecentFoods(limit = 12): Promise<Food[]> {
   }
   if (ids.length === 0) return [];
   const { data: foods, error: e2 } = await supabase.from("foods").select(FOOD_COLUMNS).in("id", ids);
-  if (e2) throw e2;
+  check(e2);
   const byId = new Map((foods ?? []).map((f) => [f.id as string, mapFood(f)]));
   return ids.map((id) => byId.get(id)).filter((f): f is Food => Boolean(f));
 }
@@ -99,7 +112,7 @@ export async function searchMyFoods(query: string, limit = 10): Promise<Food[]> 
     .or(`name.ilike.%${q}%,brand.ilike.%${q}%`)
     .order("updated_at", { ascending: false })
     .limit(limit);
-  if (error) throw error;
+  check(error);
   return (data ?? []).map(mapFood);
 }
 
@@ -113,14 +126,14 @@ export async function getFoodByBarcode(barcode: string): Promise<Food | null> {
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
+  check(error);
   return data ? mapFood(data) : null;
 }
 
 export async function getFood(id: string): Promise<Food | null> {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase.from("foods").select(FOOD_COLUMNS).eq("user_id", userId).eq("id", id).maybeSingle();
-  if (error) throw error;
+  check(error);
   return data ? mapFood(data) : null;
 }
 
@@ -129,7 +142,7 @@ export async function getWeights(fromDate?: string): Promise<WeightEntry[]> {
   let q = supabase.from("weight_entries").select("id, entry_date, weight_kg, note").eq("user_id", userId);
   if (fromDate) q = q.gte("entry_date", fromDate);
   const { data, error } = await q.order("entry_date", { ascending: true });
-  if (error) throw error;
+  check(error);
   return (data ?? []).map((r) => ({ ...r, weight_kg: Number(r.weight_kg) }));
 }
 
@@ -142,7 +155,7 @@ export async function getLatestWeight(): Promise<WeightEntry | null> {
     .order("entry_date", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
+  check(error);
   return data ? { ...data, weight_kg: Number(data.weight_kg) } : null;
 }
 
@@ -157,13 +170,13 @@ export async function getPhotos(): Promise<ProgressPhoto[]> {
     .eq("user_id", userId)
     .order("taken_on", { ascending: false })
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  check(error);
   const rows = data ?? [];
   if (rows.length === 0) return [];
   const { data: signed, error: e2 } = await supabase.storage
     .from(PHOTO_BUCKET)
     .createSignedUrls(rows.map((r) => r.storage_path), 3600);
-  if (e2) throw e2;
+  check(e2);
   const urls = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
   return rows.map((r) => ({ ...r, url: urls.get(r.storage_path) ?? null }) as ProgressPhoto);
 }

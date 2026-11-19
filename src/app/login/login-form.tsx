@@ -4,10 +4,10 @@ import { authenticate, type AuthState } from "./actions";
 import { useI18n } from "@/lib/i18n/client";
 import { Button, Field, Input, Notice } from "@/components/ui";
 
-export function LoginForm({ initialError }: { initialError?: string }) {
+export function LoginForm({ initialError, initialInfo }: { initialError?: string; initialInfo?: string }) {
   const { t } = useI18n();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [state, action, pending] = useActionState<AuthState, FormData>(authenticate, initialError ? { error: initialError } : undefined);
+  const [state, action, pending] = useActionState<AuthState, FormData>(authenticate, initialError ? { error: initialError } : initialInfo ? { info: initialInfo } : undefined);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="mode" value={mode} />

@@ -48,9 +48,16 @@ const en: Dictionary = {
     checkEmail: "Almost there: confirm your email address using the link we sent you.",
     invalidCredentials: "Email or password is incorrect.",
     passwordTooShort: "The password needs at least 8 characters.",
+    confirmedSignIn: "Email confirmed. Sign in with your password now.",
     confirmFailed: "The confirmation link is invalid or has expired.",
   },
   setup: {
+    databaseTitle: "Database not set up yet",
+    databaseText: "The app is connected to Supabase, but the tables are missing. Open the SQL Editor in Supabase and run both files from supabase/migrations (step 2 in docs/SETUP.md). Then reload this page.",
+    errorTitle: "Something went wrong",
+    errorText: "Reload the page. If the error persists, send a screenshot with the error code.",
+    toApp: "Go to app",
+
     title: "Setup missing",
     text: "The app is not connected to Supabase yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as environment variables (see docs/SETUP.md).",
   },
