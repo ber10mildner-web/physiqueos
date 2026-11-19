@@ -21,7 +21,12 @@ Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy
 
 ## 3. Schlüssel kopieren
 
-**Project Settings → API Keys** (bzw. **Connect**). Du brauchst:
+Am einfachsten über den Button **Connect** oben in der Projektleiste (am Handy evtl. im Menü ☰). Alternativ:
+
+- **Project URL:** Project Settings → **Data API**. Oder selbst zusammensetzen: Die Adresse im Browser sieht so aus `supabase.com/dashboard/project/abcdefgh…`. Der Teil nach `project/` ist deine Projekt-ID, die URL ist dann `https://abcdefgh….supabase.co`.
+- **Publishable key:** Project Settings → **API Keys**.
+
+Du brauchst:
 
 - die **Project URL** (`https://xxxx.supabase.co`)
 - den **Publishable key** (`sb_publishable_…`)
