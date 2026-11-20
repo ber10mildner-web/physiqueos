@@ -6,6 +6,7 @@ import { fmt } from "@/lib/i18n";
 import type { NutritionGoal, Profile } from "@/lib/data/types";
 import { ageFromBirthDate, caloriesFromMacroTargets, macrosForCalories, suggestTargets, type Phase, type Targets } from "@/lib/nutrition/energy";
 import { formatNumber } from "@/lib/format";
+import { shiftCarbs } from "@/lib/nutrition/goal-days";
 import { Button, Field, Input, Notice, cx } from "@/components/ui";
 import { saveGoal } from "./actions";
 
@@ -19,12 +20,28 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [phase, setPhase] = useState<Phase>(goal?.phase ?? "maintenance");
   const [values, setValues] = useState<Record<Key, string>>({
-    energy_kcal: goal ? String(goal.energy_kcal) : "",
-    protein_g: goal ? String(goal.protein_g) : "",
-    carbs_g: goal ? String(goal.carbs_g) : "",
-    fat_g: goal ? String(goal.fat_g) : "",
-    fiber_g: goal ? String(goal.fiber_g) : "",
+    energy_kcal: goal ? String(goal.base.energy_kcal) : "",
+    protein_g: goal ? String(goal.base.protein_g) : "",
+    carbs_g: goal ? String(goal.base.carbs_g) : "",
+    fat_g: goal ? String(goal.base.fat_g) : "",
+    fiber_g: goal ? String(goal.base.fiber_g) : "",
   });
+  const [altDays, setAltDays] = useState<number[]>(goal?.alt_days ?? []);
+  const [alt, setAlt] = useState<Record<Key, string>>({
+    energy_kcal: goal?.alt ? String(goal.alt.energy_kcal) : "",
+    protein_g: goal?.alt ? String(goal.alt.protein_g) : "",
+    carbs_g: goal?.alt ? String(goal.alt.carbs_g) : "",
+    fat_g: goal?.alt ? String(goal.alt.fat_g) : "",
+    fiber_g: goal?.alt ? String(goal.alt.fiber_g) : "",
+  });
+  const baseTargets = (): Targets => ({ energy_kcal: n("energy_kcal"), protein_g: n("protein_g"), carbs_g: n("carbs_g"), fat_g: n("fat_g"), fiber_g: n("fiber_g") });
+  const onAltCalories = (v: string) => {
+    const kcal = Number(v);
+    if (kcal >= 800 && n("energy_kcal") >= 800) {
+      const shifted = shiftCarbs(baseTargets(), kcal);
+      setAlt({ ...(Object.fromEntries(Object.entries(shifted).map(([k, x]) => [k, String(x)])) as Record<Key, string>), energy_kcal: v });
+    } else setAlt((s) => ({ ...s, energy_kcal: v }));
+  };
 
   const canCalculate = Boolean(profile?.sex && profile.birth_date && profile.height_cm && profile.activity_level && latestWeightKg);
   const suggestion = useMemo(() => {
@@ -44,7 +61,9 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
   const apply = (targets: Targets) =>
     setValues(Object.fromEntries(Object.entries(targets).map(([k, v]) => [k, String(v)])) as Record<Key, string>);
 
-  const n = (k: Key) => Number(values[k]) || 0;
+  function n(k: Key) {
+    return Number(values[k]) || 0;
+  }
   const macroKcal = caloriesFromMacroTargets({ protein_g: n("protein_g"), carbs_g: n("carbs_g"), fat_g: n("fat_g") });
 
   // When the user edits calories in a non-custom phase, re-split macros automatically.
@@ -140,6 +159,54 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
           {fmt(t.settings.macroKcal, { value: formatNumber(macroKcal, locale) })}
         </p>
       )}
+      <div className="rounded-2xl border border-line p-3">
+        <div className="text-sm font-medium">{t.settings.altTitle}</div>
+        <p className="mb-2 text-xs text-muted">{t.settings.altIntro}</p>
+        <div className="grid grid-cols-7 gap-1">
+          {t.settings.weekdaysShort.map((label, i) => {
+            const day = i + 1;
+            const on = altDays.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setAltDays((d) => (on ? d.filter((x) => x !== day) : [...d, day]))}
+                className={cx("h-9 rounded-lg text-xs font-medium", on ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted")}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {altDays.map((d) => (
+          <input key={d} type="hidden" name="alt_days" value={d} />
+        ))}
+        {altDays.length > 0 && (
+          <div className="mt-3 space-y-3">
+            <Field label={t.settings.energy}>
+              <Input name="alt_energy_kcal" type="number" inputMode="numeric" required min={800} max={8000} value={alt.energy_kcal} onChange={(e) => onAltCalories(e.target.value)} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              {fields.map((f) => (
+                <Field key={f.key} label={f.label}>
+                  <Input
+                    name={`alt_${f.key}`}
+                    type="number"
+                    inputMode="numeric"
+                    required
+                    min={0}
+                    value={alt[f.key]}
+                    onChange={(e) => setAlt((s) => ({ ...s, [f.key]: e.target.value }))}
+                  />
+                </Field>
+              ))}
+            </div>
+            <p className="text-xs text-faint">{t.settings.altHint}</p>
+          </div>
+        )}
+      </div>
+
       <Field label={t.settings.validFrom}>
         <Input name="valid_from" type="date" defaultValue={goal && goal.valid_from === today ? goal.valid_from : today} required />
       </Field>

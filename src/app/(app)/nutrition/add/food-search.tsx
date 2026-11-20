@@ -14,7 +14,7 @@ interface Results {
   unavailable: FoodSource[];
 }
 
-const SOURCE_NAMES: Record<FoodSource, string> = { openfoodfacts: "Open Food Facts", usda: "USDA FoodData Central", custom: "PhysiqueOS", recipe: "PhysiqueOS" };
+const SOURCE_NAMES: Record<FoodSource, string> = { openfoodfacts: "Open Food Facts", usda: "USDA FoodData Central", custom: "Sigma", recipe: "Sigma" };
 
 export function FoodSearch({ recent, favorites, onSelect, initialQuery }: { recent: FoodCandidate[]; favorites: FoodCandidate[]; onSelect: (f: FoodCandidate) => void; initialQuery?: string }) {
   const { t } = useI18n();

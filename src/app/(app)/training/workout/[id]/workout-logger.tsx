@@ -11,7 +11,9 @@ import { estimate1RM, suggestNext, volume } from "@/lib/training/calc";
 import type { ExerciseHint } from "@/lib/training/hints";
 import { Button, Card, Notice, cx } from "@/components/ui";
 import { ExercisePicker, exerciseName } from "../../exercise-picker";
-import { addSetAction, deleteSetAction, deleteWorkoutAction, finishWorkoutAction, hintAction } from "../../actions";
+import { addSetAction, deleteSetAction, deleteWorkoutAction, finishWorkoutAction, hintAction, rateTrainingAction } from "../../actions";
+import { RatingFields, RatingSummary, emptyRating, isRated } from "@/components/rating-form";
+import type { TrainingRating } from "@/lib/data/types";
 
 type Target = { target_sets: number; rep_min: number; rep_max: number };
 
@@ -70,11 +72,7 @@ export function WorkoutLogger({
         <Plus className="size-4" /> {t.training.addExercise}
       </Button>
 
-      {!workout.finished_at && (
-        <Button type="button" className="w-full" disabled={pending} onClick={() => start(async () => void (await finishWorkoutAction(workout.id)))}>
-          {t.training.finish}
-        </Button>
-      )}
+      <WorkoutRating workout={workout} />
       <Button
         type="button"
         variant="danger"
@@ -250,6 +248,79 @@ function ExerciseBlock({ workoutId, exercise, sets, target, hint }: { workoutId:
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-danger">{t.errors.invalidInput}</p>}
+    </Card>
+  );
+}
+
+function WorkoutRating({ workout }: { workout: Workout }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const saved: TrainingRating = { feeling: workout.feeling, energy: workout.energy, effort: workout.effort, rating_note: workout.rating_note };
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<TrainingRating>(isRated(saved) ? saved : emptyRating);
+  const [error, setError] = useState(false);
+  const [pending, start] = useTransition();
+
+  if (!workout.finished_at && !open) {
+    return (
+      <Button type="button" className="w-full" onClick={() => setOpen(true)}>
+        {t.training.finish}
+      </Button>
+    );
+  }
+
+  if (workout.finished_at && !open) {
+    return (
+      <Card>
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="font-semibold">{t.rating.title}</h3>
+          <button type="button" className="text-sm font-medium text-accent" onClick={() => setOpen(true)}>
+            {isRated(saved) ? t.rating.edit : t.rating.rate}
+          </button>
+        </div>
+        {isRated(saved) && <RatingSummary value={saved} />}
+      </Card>
+    );
+  }
+
+  const finishing = !workout.finished_at;
+  return (
+    <Card>
+      <h3 className="mb-3 font-semibold">{t.rating.title}</h3>
+      <RatingFields value={value} onChange={setValue} />
+      {error && <p className="mt-2 text-xs text-danger">{t.errors.invalidInput}</p>}
+      <div className="mt-4 space-y-2">
+        <Button
+          type="button"
+          className="w-full"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setError(false);
+              if (finishing) {
+                const res = await finishWorkoutAction(workout.id, isRated(value) ? value : null);
+                if (res && !res.ok) setError(true);
+                return;
+              }
+              const res = await rateTrainingAction("workout", workout.id, value);
+              if (!res.ok) return setError(true);
+              setOpen(false);
+              router.refresh();
+            })
+          }
+        >
+          {pending ? t.common.saving : finishing ? t.rating.saveAndFinish : t.common.save}
+        </Button>
+        {finishing ? (
+          <Button type="button" variant="ghost" className="w-full" disabled={pending} onClick={() => start(async () => void (await finishWorkoutAction(workout.id, null)))}>
+            {t.rating.finishWithout}
+          </Button>
+        ) : (
+          <Button type="button" variant="ghost" className="w-full" disabled={pending} onClick={() => setOpen(false)}>
+            {t.common.cancel}
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

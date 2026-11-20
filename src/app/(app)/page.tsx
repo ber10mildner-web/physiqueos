@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ScanBarcode, Plus, Scale, Camera } from "lucide-react";
+import { ScanBarcode, Plus, Scale, Camera, Quote, Sparkles } from "lucide-react";
+import { quoteOfDay } from "@/lib/quotes";
 import { getI18n } from "@/lib/i18n/server";
 import { getDiary, getGoalOn, getProfile, getWeights } from "@/lib/data";
 import { getToday } from "@/lib/auth";
@@ -36,6 +37,14 @@ export default async function DashboardPage() {
       </header>
 
       <div className="space-y-4">
+        <figure className="flex gap-3 rounded-3xl border border-line bg-surface px-4 py-3.5">
+          <Quote className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
+          <div>
+            <figcaption className="text-xs text-muted">{t.quote.title}</figcaption>
+            <blockquote className="mt-0.5 text-[15px] leading-snug">{quoteOfDay(today, locale)}</blockquote>
+          </div>
+        </figure>
+
         <Card>
           <DaySummary totals={totals} goal={goal} t={t} locale={locale} />
           {!goal && (
@@ -81,7 +90,35 @@ export default async function DashboardPage() {
             )}
           </Card>
         </Link>
+
+        <Card>
+          <SectionTitle>
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="size-4 text-accent" /> {t.askClaude.title}
+            </span>
+          </SectionTitle>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                [t.askClaude.week, t.askClaude.weekPrompt],
+                [t.askClaude.training, t.askClaude.trainingPrompt],
+                [t.askClaude.food, t.askClaude.foodPrompt],
+                [t.askClaude.skin, t.askClaude.skinPrompt],
+              ] as const
+            ).map(([label, prompt]) => (
+              <a key={label} href={claudeLink(prompt)} target="_blank" rel="noreferrer" className={buttonClass("secondary", "sm")}>
+                {label}
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-faint">{t.askClaude.hint}</p>
+        </Card>
       </div>
     </Page>
   );
+}
+
+/** Opens a new Claude chat with the question already filled in. */
+function claudeLink(prompt: string) {
+  return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
 }

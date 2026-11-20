@@ -2,7 +2,10 @@ import Link from "next/link";
 import { ChevronRight, Dumbbell, Pencil, Plus } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n";
-import { getToday } from "@/lib/auth";
+import { getToday, requireUser } from "@/lib/auth";
+import { PHOTO_BUCKET, getLatestWeight } from "@/lib/data";
+import { withKcalEstimates } from "@/lib/cardio";
+import { displayReaderEnabled } from "@/lib/ai/display-reader";
 import { addDays, formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
 import { listCardio, listPlans, listWorkouts } from "@/lib/data/training";
@@ -16,7 +19,18 @@ export default async function TrainingPage() {
   const today = await getToday();
   const dow = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
   const weekStart = addDays(today, -dow);
-  const [plans, workouts, cardio] = await Promise.all([listPlans(), listWorkouts({ limit: 30 }), listCardio({ from: addDays(today, -60) })]);
+  const [plans, workouts, rawCardio, ctx, latestWeight] = await Promise.all([listPlans(), listWorkouts({ limit: 30 }), listCardio({ from: addDays(today, -60) }), requireUser(), getLatestWeight()]);
+  const cardio = await withKcalEstimates(rawCardio);
+  const shown = cardio.slice(0, 15);
+  const photoPaths = shown.filter((c) => c.machine_photo_path).map((c) => c.machine_photo_path!);
+  const photoUrls: Record<string, string> = {};
+  if (photoPaths.length) {
+    const { data } = await ctx.supabase.storage.from(PHOTO_BUCKET).createSignedUrls(photoPaths, 60 * 60);
+    for (const c of shown) {
+      const url = data?.find((d) => d.path === c.machine_photo_path)?.signedUrl;
+      if (url) photoUrls[c.id] = url;
+    }
+  }
   const active = workouts.find((w) => !w.finished_at);
   const week = workouts.filter((w) => w.workout_date >= weekStart);
   const weekCardio = cardio.filter((c) => c.session_date >= weekStart);
@@ -107,7 +121,7 @@ export default async function TrainingPage() {
         </Card>
         <Card>
           <SectionTitle>{t.training.recentCardio}</SectionTitle>
-          <CardioList sessions={cardio.slice(0, 15)} />
+          <CardioList sessions={shown} userId={ctx.userId} photoUrls={photoUrls} aiEnabled={displayReaderEnabled()} hasWeight={Boolean(latestWeight)} />
         </Card>
       </div>
     </Page>

@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -168,5 +168,27 @@ describe("schema", () => {
     await expect(as(A, () => db.exec(`update public.garmin_connections set display_name = 'x'`))).rejects.toThrow(/permission denied/);
     const seenByB = await as(B, () => db.query("select display_name from public.garmin_connections"));
     expect(seenByB.rows).toHaveLength(0);
+  });
+  it("keeps skin and medication logs private and rejects foreign medications", async () => {
+    await as(A, () => db.exec(`insert into public.skin_logs (user_id, entry_date, score, areas) values ('${A}', '2026-11-20', 2, '{chin,forehead}')`));
+    await expect(as(A, () => db.exec(`insert into public.skin_logs (user_id, entry_date, score, areas) values ('${A}', '2026-11-21', 1, '{elbow}')`))).rejects.toThrow(/check constraint/);
+    const m = await as(A, () => db.query<{ id: string }>(`insert into public.medications (user_id, name, dose) values ('${A}', 'Zink', '25 mg') returning id`));
+    await as(A, () => db.exec(`insert into public.medication_logs (user_id, medication_id, name, entry_date) values ('${A}', '${m.rows[0].id}', 'Zink', '2026-11-20')`));
+    await expect(
+      as(B, () => db.exec(`insert into public.medication_logs (user_id, medication_id, name, entry_date) values ('${B}', '${m.rows[0].id}', 'Zink', '2026-11-20')`)),
+    ).rejects.toThrow(/row-level security/);
+    for (const table of ["skin_logs", "medications", "medication_logs"]) {
+      const seen = await as(B, () => db.query(`select * from public.${table}`));
+      expect(seen.rows, table).toHaveLength(0);
+    }
+  });
+
+  it("stores training ratings and only accepts display photos in the owner's cardio folder", async () => {
+    const c = await as(A, () =>
+      db.query<{ id: string }>(`insert into public.cardio_sessions (user_id, session_date, activity, duration_min, feeling, effort) values ('${A}', '2026-11-20', 'stairs', 60, 8, 9) returning id`),
+    );
+    await expect(as(A, () => db.exec(`update public.cardio_sessions set feeling = 11 where id = '${c.rows[0].id}'`))).rejects.toThrow(/check constraint/);
+    await expect(as(A, () => db.exec(`update public.cardio_sessions set machine_photo_path = '../x.jpg' where id = '${c.rows[0].id}'`))).rejects.toThrow(/check constraint/);
+    await as(A, () => db.exec(`update public.cardio_sessions set machine_photo_path = '${A}/cardio/${B}.jpg', machine_level = 8, machine_floors = 120 where id = '${c.rows[0].id}'`));
   });
 });

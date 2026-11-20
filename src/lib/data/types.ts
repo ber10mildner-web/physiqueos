@@ -1,5 +1,6 @@
 import type { NutrientMap } from "@/lib/nutrition/nutrients";
 import type { ActivityLevel, Phase, Sex } from "@/lib/nutrition/energy";
+import type { GoalTargets } from "@/lib/nutrition/goal-days";
 import type { FoodSource } from "@/lib/food-sources/types";
 
 export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
@@ -27,6 +28,13 @@ export interface NutritionGoal {
   carbs_g: number;
   fat_g: number;
   fiber_g: number;
+  /** true if `date` is one of the weekdays with different targets (energy_kcal … fiber_g are then those). */
+  alt_day: boolean;
+  /** Targets on normal days. */
+  base: GoalTargets;
+  /** ISO weekdays (1 = Monday) with different targets, and those targets. */
+  alt_days: number[];
+  alt: GoalTargets | null;
 }
 
 export interface Food {
@@ -151,7 +159,19 @@ export interface Workout {
   started_at: string;
   finished_at: string | null;
   notes: string | null;
+  feeling: number | null;
+  energy: number | null;
+  effort: number | null;
+  rating_note: string | null;
   sets: WorkoutSet[];
+}
+
+/** Subjective rating after a workout or cardio session, each 1–10. */
+export interface TrainingRating {
+  feeling: number | null;
+  energy: number | null;
+  effort: number | null;
+  rating_note: string | null;
 }
 
 export type CardioActivity = "run" | "bike" | "walk" | "row" | "swim" | "elliptical" | "stairs" | "hike" | "other";
@@ -167,6 +187,48 @@ export interface CardioSession {
   kcal: number | null;
   notes: string | null;
   source: "manual" | "garmin" | "strava" | "claude";
+  feeling: number | null;
+  energy: number | null;
+  effort: number | null;
+  rating_note: string | null;
+  machine_minutes: number | null;
+  machine_level: number | null;
+  machine_floors: number | null;
+  machine_steps: number | null;
+  machine_kcal: number | null;
+  machine_photo_path: string | null;
+}
+
+export const SKIN_AREAS = ["forehead", "nose", "cheeks", "chin", "jaw", "neck", "chest", "back", "other"] as const;
+export type SkinArea = (typeof SKIN_AREAS)[number];
+
+export interface SkinLog {
+  entry_date: string;
+  score: number;
+  areas: SkinArea[];
+  note: string | null;
+  source: "manual" | "claude";
+}
+
+export const MEDICATION_KINDS = ["medication", "supplement", "skincare"] as const;
+export type MedicationKind = (typeof MEDICATION_KINDS)[number];
+
+export interface Medication {
+  id: string;
+  name: string;
+  dose: string | null;
+  kind: MedicationKind;
+  position: number;
+}
+
+export interface MedicationLog {
+  id: string;
+  medication_id: string | null;
+  name: string;
+  dose: string | null;
+  entry_date: string;
+  taken_at: string;
+  source: "manual" | "claude";
 }
 
 export interface DailyHealth {

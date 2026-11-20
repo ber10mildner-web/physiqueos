@@ -13,12 +13,17 @@ import {
   deleteWorkout,
   finishWorkout,
   listPlans,
+  rateTraining,
+  setCardioMachine,
+  getCardio,
   savePlan,
   startWorkout,
   updateSet,
 } from "@/lib/data/training";
 import { exerciseHint, type ExerciseHint } from "@/lib/training/hints";
-import type { Exercise } from "@/lib/data/types";
+import type { Exercise, TrainingRating } from "@/lib/data/types";
+import { PHOTO_BUCKET } from "@/lib/data";
+import { displayReaderEnabled, readDisplay, type DisplayValues } from "@/lib/ai/display-reader";
 
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -52,8 +57,13 @@ export async function deleteSetAction(id: string): Promise<R> {
   return res;
 }
 
-export async function finishWorkoutAction(id: string) {
-  const res = await finishWorkout(id, await requireUser());
+export async function finishWorkoutAction(id: string, rating: TrainingRating | null) {
+  const ctx = await requireUser();
+  if (rating) {
+    const r = await rateTraining("workout", id, rating, ctx);
+    if (!r.ok) return r;
+  }
+  const res = await finishWorkout(id, ctx);
   if (!res.ok) return res;
   done();
   redirect("/training");
@@ -114,4 +124,51 @@ export async function deleteCardioAction(id: string): Promise<R> {
   const res = await deleteCardio(id, await requireUser());
   if (res.ok) done();
   return res;
+}
+
+export async function rateTrainingAction(kind: "workout" | "cardio", id: string, rating: TrainingRating): Promise<R> {
+  const res = await rateTraining(kind, id, rating, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+export async function saveMachineAction(
+  id: string,
+  input: { machine_minutes: number | null; machine_level: number | null; machine_floors: number | null; machine_steps: number | null; machine_kcal: number | null },
+): Promise<R> {
+  const res = await setCardioMachine(id, input, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+/** Called after the browser uploaded the display photo; replaces an older photo. */
+export async function setMachinePhotoAction(id: string, path: string): Promise<R> {
+  const ctx = await requireUser();
+  const old = await getCardio(id, ctx);
+  if (!old) return { ok: false, error: "not_found" };
+  const res = await setCardioMachine(id, { machine_photo_path: path }, ctx);
+  if (!res.ok) {
+    await ctx.supabase.storage.from(PHOTO_BUCKET).remove([path]);
+    return res;
+  }
+  if (old.machine_photo_path && old.machine_photo_path !== path) await ctx.supabase.storage.from(PHOTO_BUCKET).remove([old.machine_photo_path]);
+  done();
+  return { ok: true };
+}
+
+/** Reads the display photo with the Claude API (only if ANTHROPIC_API_KEY is configured). */
+export async function readMachinePhotoAction(id: string): Promise<R<{ values: DisplayValues }>> {
+  if (!displayReaderEnabled()) return { ok: false, error: "disabled" };
+  const ctx = await requireUser();
+  const session = await getCardio(id, ctx);
+  if (!session?.machine_photo_path) return { ok: false, error: "no_photo" };
+  const file = await ctx.supabase.storage.from(PHOTO_BUCKET).download(session.machine_photo_path);
+  if (file.error || !file.data) return { ok: false, error: "download" };
+  try {
+    const values = await readDisplay(Buffer.from(await file.data.arrayBuffer()));
+    return values && values.readable ? { ok: true, values } : { ok: false, error: "unreadable" };
+  } catch (e) {
+    console.error("display reader", e);
+    return { ok: false, error: "api" };
+  }
 }

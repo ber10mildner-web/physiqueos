@@ -90,7 +90,7 @@ export function mapOffProduct(p: OffProduct, fallbackCode?: string, locale: "de"
 
 function headers() {
   return {
-    "User-Agent": process.env.OFF_USER_AGENT || "PhysiqueOS/0.1 (personal nutrition tracker)",
+    "User-Agent": process.env.OFF_USER_AGENT || "Sigma/0.3 (personal nutrition tracker)",
     Accept: "application/json",
   };
 }

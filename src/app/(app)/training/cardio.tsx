@@ -1,11 +1,15 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
-import { CARDIO_ACTIVITIES, type CardioSession } from "@/lib/data/types";
+import { CARDIO_ACTIVITIES } from "@/lib/data/types";
+import type { CardioWithEstimate } from "@/lib/cardio";
+import { fmt } from "@/lib/i18n";
+import { cx } from "@/components/ui";
+import { CardioDetails } from "./cardio-details";
 import { Button, EmptyState, Field, Input, Notice, Select } from "@/components/ui";
 import { addCardioAction, deleteCardioAction } from "./actions";
 
@@ -73,41 +77,75 @@ export function CardioForm({ today }: { today: string }) {
   );
 }
 
-export function CardioList({ sessions }: { sessions: CardioSession[] }) {
+export function CardioList({
+  sessions,
+  userId,
+  photoUrls,
+  aiEnabled,
+  hasWeight,
+}: {
+  sessions: CardioWithEstimate[];
+  userId: string;
+  photoUrls: Record<string, string>;
+  aiEnabled: boolean;
+  hasWeight: boolean;
+}) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState<string | null>(null);
   if (!sessions.length) return <EmptyState>{t.training.noCardio}</EmptyState>;
   return (
     <ul className="divide-y divide-line">
-      {sessions.map((c) => (
-        <li key={c.id} className="flex items-center gap-3 py-3">
-          <div className="min-w-0 flex-1">
-            <div className="font-medium">{t.training.activities[c.activity]}</div>
-            <div className="num text-xs text-muted">
-              {formatDate(c.session_date, locale)} · {formatNumber(c.duration_min, locale)} min
-              {c.distance_km !== null && ` · ${formatNumber(c.distance_km, locale, 2)} km`}
-              {c.avg_hr !== null && ` · ${c.avg_hr} bpm`}
-              {c.kcal !== null && ` · ${c.kcal} kcal`}
+      {sessions.map((c) => {
+        const machineEmpty = [c.machine_minutes, c.machine_level, c.machine_floors, c.machine_steps, c.machine_kcal].every((v) => v === null);
+        const showEstimate = c.estimate && c.estimate.sources.length > 1;
+        return (
+          <li key={c.id} className="py-3">
+            <div className="flex items-center gap-3">
+              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
+                <div className="flex items-center gap-1.5 font-medium">
+                  {t.training.activities[c.activity]}
+                  {c.source === "garmin" && <span className="text-xs font-normal text-faint">· Garmin</span>}
+                  <ChevronDown className={cx("size-4 text-faint transition", open === c.id && "rotate-180")} />
+                </div>
+                <div className="num text-xs text-muted">
+                  {formatDate(c.session_date, locale)} · {formatNumber(c.duration_min, locale)} min
+                  {c.distance_km !== null && ` · ${formatNumber(c.distance_km, locale, 2)} km`}
+                  {c.avg_hr !== null && ` · ${c.avg_hr} bpm`}
+                  {c.kcal !== null && ` · ${c.kcal} kcal`}
+                </div>
+                {(showEstimate || c.feeling !== null || (c.machine_photo_path && machineEmpty)) && (
+                  <div className="num mt-0.5 text-xs">
+                    {showEstimate && <span className="text-accent">{t.machine.estimate} {fmt(t.machine.estimateShort, { kcal: formatNumber(c.estimate!.kcal, locale) })}</span>}
+                    {showEstimate && c.feeling !== null && <span className="text-faint"> · </span>}
+                    {c.feeling !== null && <span className="text-muted">{t.rating.feeling} {c.feeling}/10</span>}
+                    {c.machine_photo_path && machineEmpty && <span className="text-warn"> {t.machine.waiting}</span>}
+                  </div>
+                )}
+              </button>
+              <button
+                type="button"
+                aria-label={t.common.delete}
+                disabled={pending}
+                className="grid size-9 place-items-center rounded-xl text-faint hover:text-danger"
+                onClick={() => {
+                  if (!confirm(t.common.confirmDelete)) return;
+                  start(async () => {
+                    await deleteCardioAction(c.id);
+                    router.refresh();
+                  });
+                }}
+              >
+                <Trash2 className="size-4" />
+              </button>
             </div>
-          </div>
-          <button
-            type="button"
-            aria-label={t.common.delete}
-            disabled={pending}
-            className="grid size-9 place-items-center rounded-xl text-faint hover:text-danger"
-            onClick={() => {
-              if (!confirm(t.common.confirmDelete)) return;
-              start(async () => {
-                await deleteCardioAction(c.id);
-                router.refresh();
-              });
-            }}
-          >
-            <Trash2 className="size-4" />
-          </button>
-        </li>
-      ))}
+            {open === c.id && (
+              <CardioDetails session={c} userId={userId} photoUrl={photoUrls[c.id] ?? null} aiEnabled={aiEnabled} hasWeight={hasWeight} onClose={() => setOpen(null)} />
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -6,6 +6,7 @@ import "server-only";
  */
 import { ctxOr, check, type Ctx } from "./core";
 import { sanitizeNutrients } from "@/lib/nutrition/nutrients";
+import { altTargets, targetsOn, type GoalRow } from "@/lib/nutrition/goal-days";
 import type { DiaryEntry, Food, NutritionGoal, Profile, ProgressPhoto, WeightEntry } from "./types";
 
 export type { Ctx };
@@ -24,18 +25,35 @@ export async function getProfile(ctx?: Ctx): Promise<Profile | null> {
 }
 
 /** The goal in effect on `date` (latest valid_from <= date). */
+const GOAL_COLUMNS = "id, valid_from, phase, energy_kcal, protein_g, carbs_g, fat_g, fiber_g, alt_days, alt_energy_kcal, alt_protein_g, alt_carbs_g, alt_fat_g, alt_fiber_g";
+
+/** Resolves a goal row for a day: on its special weekdays the alternative targets apply. */
+export function resolveGoal(row: GoalRow, date: string): NutritionGoal {
+  const { alt_day, ...targets } = targetsOn(row, date);
+  return {
+    id: row.id,
+    valid_from: row.valid_from,
+    phase: row.phase as NutritionGoal["phase"],
+    ...targets,
+    alt_day,
+    base: { energy_kcal: row.energy_kcal, protein_g: row.protein_g, carbs_g: row.carbs_g, fat_g: row.fat_g, fiber_g: row.fiber_g },
+    alt_days: row.alt_days ?? [],
+    alt: altTargets(row),
+  };
+}
+
 export async function getGoalOn(date: string, ctx?: Ctx): Promise<NutritionGoal | null> {
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("nutrition_goals")
-    .select("id, valid_from, phase, energy_kcal, protein_g, carbs_g, fat_g, fiber_g")
+    .select(GOAL_COLUMNS)
     .eq("user_id", userId)
     .lte("valid_from", date)
     .order("valid_from", { ascending: false })
     .limit(1)
     .maybeSingle();
   check(error, !ctx);
-  return data as NutritionGoal | null;
+  return data ? resolveGoal(data as GoalRow, date) : null;
 }
 
 function mapEntry(row: Record<string, unknown>): DiaryEntry {
@@ -200,11 +218,11 @@ export async function getGoalsBetween(from: string, to: string, ctx?: Ctx): Prom
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("nutrition_goals")
-    .select("id, valid_from, phase, energy_kcal, protein_g, carbs_g, fat_g, fiber_g")
+    .select(GOAL_COLUMNS)
     .eq("user_id", userId)
     .gt("valid_from", from)
     .lte("valid_from", to)
     .order("valid_from");
   check(error, !ctx);
-  return [...(first ? [first] : []), ...((data ?? []) as NutritionGoal[])];
+  return [...(first ? [first] : []), ...((data ?? []) as GoalRow[]).map((r) => resolveGoal(r, r.valid_from))];
 }

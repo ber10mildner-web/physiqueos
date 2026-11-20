@@ -11,6 +11,16 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Training: Übungsbibliothek, eigene Übungen, Pläne, Sätze/Wiederholungen/Gewicht, Bestleistungen, Kraftverlauf, Cardio
 - [~] Garmin (Versuch gebaut 2026-11-20: einmalige Anmeldung am Computer, danach täglicher Abgleich; muss sich im Alltag bewähren): Schlaf-Score, HRV, Ruhepuls, Aktivitäten (offizielle API nur für Firmen; privat inoffiziell oder über Strava)
 
+## Sigma-Ausbau (2026-11-20)
+
+- [x] Name „Sigma“
+- [x] Subjektive Trainingsbewertung (Gefühl, Energie, Anstrengung, Notiz)
+- [x] Haut (Pickel) und Medikamente als Tagesprotokoll
+- [x] Stairmaster-/Gerätefoto mit Garmin verrechnen (genauere Kalorien)
+- [x] Tageszitat
+- [x] Kalorienziel pro Wochentag (z. B. Cardio-Tage Di/Do mehr)
+- [x] Claude-Auswertung aus der App heraus (öffnet die Claude-App, kostenlos über den Konnektor)
+
 ## Ideen von Claude
 
 - Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel automatisch nachjustieren
@@ -35,8 +45,14 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - Kraftverlauf als Diagramm pro Übung
 - Strava als Umweg für Garmin-Aktivitäten (offizielle API)
 - Gemeinsamer Produkt-Cache für alle Nutzer (wichtig, falls die App verkauft wird)
+- Hautverlauf neben Ernährung/Schlaf als Diagramm (Muster sichtbar machen)
+- Erinnerung für Medikamente (Push-Benachrichtigung)
+- Gerätefoto auch für Laufband/Rad (Werte vom Display mit Garmin vergleichen)
 - Bezahlmodell/Abos erst, wenn verkauft werden soll (Vercel Pro nötig, Hobby ist nur nicht-kommerziell)
 
 ## Ideen von Leo
 
 - (hier landet alles, was du beim Testen schreibst)
+- Kalender verknüpfen, z. B. geplante Trainings und Cardio-Tage im Handykalender (später)
+- Trading Journal verknüpfen. Vorschlag: als eigene kleine App, damit Sigma bei Körper und Gesundheit bleibt; Claude kann beide später gemeinsam auswerten
+- Eigener Claude-Chat direkt in Sigma (kostet API-Guthaben, ca. 2–10 Cent pro Frage). Entschieden 2026-11-20: vorerst kostenlos über die Claude-App
