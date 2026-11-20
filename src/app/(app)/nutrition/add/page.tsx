@@ -1,5 +1,7 @@
 import { getI18n } from "@/lib/i18n/server";
-import { getRecentFoods } from "@/lib/data";
+import { getFavoriteFoods, getRecentFoods } from "@/lib/data";
+import { listRecipes } from "@/lib/data/recipes";
+import { recipeAsCandidate } from "@/lib/nutrition/recipe-candidate";
 import { getTimeZone, getToday } from "@/lib/auth";
 import { isIsoDate } from "@/lib/dates";
 import { MEALS, type MealSlot } from "@/lib/data/types";
@@ -21,12 +23,12 @@ export default async function AddFoodPage({ searchParams }: PageProps<"/nutritio
   const today = await getToday();
   const date = isIsoDate(sp.date) ? sp.date : today;
   const meal = MEALS.includes(sp.meal as MealSlot) ? (sp.meal as MealSlot) : defaultMeal(await getTimeZone());
-  const tab: Tab = sp.tab === "scan" || sp.tab === "manual" ? sp.tab : "search";
-  const recent = await getRecentFoods();
+  const tab: Tab = sp.tab === "scan" || sp.tab === "manual" || sp.tab === "recipes" ? sp.tab : "search";
+  const [recent, favorites, recipes] = await Promise.all([getRecentFoods(), getFavoriteFoods(), listRecipes()]);
   return (
     <Page>
       <PageHeader title={t.addFood.title} back={{ href: `/nutrition?date=${date}`, label: t.nutrition.title }} />
-      <AddFood initialTab={tab} initialMeal={meal} date={date} today={today} recent={recent} />
+      <AddFood initialTab={tab} initialMeal={meal} date={date} today={today} recent={recent} favorites={favorites} recipes={recipes.map(recipeAsCandidate)} />
     </Page>
   );
 }

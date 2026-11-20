@@ -17,6 +17,7 @@ const profileSchema = z.object({
   birth_date: z.string().refine((v) => v === "" || isIsoDate(v)).transform((v) => v || null),
   height_cm: optionalNumber(100, 250),
   activity_level: z.enum(["sedentary", "light", "moderate", "active", "very_active"]).nullable().catch(null),
+  water_target_ml: optionalNumber(500, 8000).transform((v) => (v === null ? null : Math.round(v))),
 });
 
 export async function saveProfile(formData: FormData): Promise<ActionResult> {
@@ -27,6 +28,7 @@ export async function saveProfile(formData: FormData): Promise<ActionResult> {
     birth_date: formData.get("birth_date") ?? "",
     height_cm: formData.get("height_cm"),
     activity_level: formData.get("activity_level") || null,
+    water_target_ml: formData.get("water_target_ml"),
   });
   if (!parsed.success) return { ok: false, error: "invalid" };
   const { error } = await supabase.from("profiles").update(parsed.data).eq("id", userId);

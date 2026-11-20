@@ -9,10 +9,28 @@ import { FoodSearch } from "./food-search";
 import { BarcodeTab } from "./barcode-tab";
 import { FoodForm } from "./food-form";
 import { FoodSheet } from "./food-sheet";
+import { RecipePicker } from "./recipe-picker";
+import { logRecipe } from "../recipes/actions";
 
-export type Tab = "search" | "scan" | "manual";
+export type Tab = "search" | "scan" | "recipes" | "manual";
 
-export function AddFood({ initialTab, initialMeal, date: initialDate, today, recent }: { initialTab: Tab; initialMeal: MealSlot; date: string; today: string; recent: FoodCandidate[] }) {
+export function AddFood({
+  initialTab,
+  initialMeal,
+  date: initialDate,
+  today,
+  recent,
+  favorites,
+  recipes,
+}: {
+  initialTab: Tab;
+  initialMeal: MealSlot;
+  date: string;
+  today: string;
+  recent: FoodCandidate[];
+  favorites: FoodCandidate[];
+  recipes: FoodCandidate[];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -24,6 +42,7 @@ export function AddFood({ initialTab, initialMeal, date: initialDate, today, rec
   const tabs: { id: Tab; label: string }[] = [
     { id: "search", label: t.addFood.tabSearch },
     { id: "scan", label: t.addFood.tabScan },
+    { id: "recipes", label: t.recipes.title },
     { id: "manual", label: t.addFood.tabManual },
   ];
 
@@ -51,7 +70,7 @@ export function AddFood({ initialTab, initialMeal, date: initialDate, today, rec
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-surface p-1" role="tablist">
+      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface p-1" role="tablist">
         {tabs.map((x) => (
           <button
             key={x.id}
@@ -66,7 +85,8 @@ export function AddFood({ initialTab, initialMeal, date: initialDate, today, rec
         ))}
       </div>
 
-      {tab === "search" && <FoodSearch recent={recent} onSelect={setSelected} />}
+      {tab === "search" && <FoodSearch recent={recent} favorites={favorites} onSelect={setSelected} />}
+      {tab === "recipes" && <RecipePicker recipes={recipes} onSelect={setSelected} />}
       {tab === "scan" && <BarcodeTab onFound={setSelected} onNotFound={(barcode) => openManual({ barcode })} />}
       {tab === "manual" && <FoodForm key={JSON.stringify(draft)} initial={draft} onSubmit={setSelected} />}
 
@@ -76,8 +96,9 @@ export function AddFood({ initialTab, initialMeal, date: initialDate, today, rec
           meal={meal}
           date={date}
           onClose={() => setSelected(null)}
-          onComplete={(f) => openManual(f)}
+          onComplete={(f) => (f.source === "recipe" ? router.push(`/nutrition/recipes/${f.id}`) : openManual(f))}
           onLogged={() => router.push(`/nutrition?date=${date}`)}
+          onSubmit={selected.source === "recipe" ? (g) => logRecipe(selected.id!, g, meal, date) : undefined}
         />
       )}
     </div>

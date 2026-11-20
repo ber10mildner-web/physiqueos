@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ChevronRight, Sparkles } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getGoalOn, getLatestWeight, getProfile } from "@/lib/data";
 import { getToday, requireUser } from "@/lib/auth";
@@ -30,6 +32,18 @@ export default async function SettingsPage() {
           <SectionTitle>{t.settings.profile}</SectionTitle>
           <ProfileForm profile={profile} />
         </Card>
+        <Link href="/settings/connect" className="block">
+          <Card className="flex items-center gap-3 transition hover:bg-surface-2">
+            <div className="grid size-11 place-items-center rounded-2xl bg-surface-3">
+              <Sparkles className="size-5 text-accent" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium">{t.connect.title}</div>
+              <div className="text-sm text-muted">MCP</div>
+            </div>
+            <ChevronRight className="size-5 text-faint" />
+          </Card>
+        </Link>
         <Card>
           <SectionTitle>{t.settings.language}</SectionTitle>
           <LanguageSwitch />

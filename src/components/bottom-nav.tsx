@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Apple, Activity, UserRound } from "lucide-react";
+import { Home, Apple, Activity, Dumbbell, UserRound } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { cx } from "./ui";
 
@@ -11,12 +11,13 @@ export function BottomNav() {
   const items = [
     { href: "/", label: t.nav.dashboard, icon: Home, active: pathname === "/" },
     { href: "/nutrition", label: t.nav.nutrition, icon: Apple, active: pathname.startsWith("/nutrition") },
+    { href: "/training", label: t.nav.training, icon: Dumbbell, active: pathname.startsWith("/training") },
     { href: "/body", label: t.nav.body, icon: Activity, active: pathname.startsWith("/body") },
     { href: "/settings", label: t.nav.settings, icon: UserRound, active: pathname.startsWith("/settings") },
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line/80 bg-bg/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-      <ul className="mx-auto grid max-w-xl grid-cols-4">
+      <ul className="mx-auto grid max-w-xl grid-cols-5">
         {items.map(({ href, label, icon: Icon, active }) => (
           <li key={href}>
             <Link

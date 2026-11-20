@@ -36,7 +36,9 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261120000000_grants.sql"), "utf8"));
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql"]) {
+    await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
+  }
   await db.exec(`
     insert into auth.users (id, raw_user_meta_data) values ('${A}', '{"locale":"en"}'), ('${B}', '{}');
   `);
@@ -119,5 +121,41 @@ describe("schema", () => {
     const insert = `insert into public.nutrition_goals (user_id, valid_from, phase, energy_kcal, protein_g, carbs_g, fat_g, fiber_g) values ('${A}', '2026-11-19', 'cut', 2200, 170, 220, 60, 30)`;
     await as(A, () => db.exec(insert));
     await expect(as(A, () => db.exec(insert))).rejects.toThrow(/duplicate key/);
+  });
+
+  it("shares built-in exercises but keeps custom exercises private", async () => {
+    await as(A, () => db.exec(`insert into public.exercises (user_id, name_de, name_en, muscle_group) values ('${A}', 'Meine Übung', 'My exercise', 'chest')`));
+    const a = await as(A, () => db.query("select count(*)::int as n from public.exercises"));
+    const b = await as(B, () => db.query("select count(*)::int as n from public.exercises"));
+    expect((a.rows[0] as { n: number }).n).toBe((b.rows[0] as { n: number }).n + 1);
+    expect((b.rows[0] as { n: number }).n).toBeGreaterThan(40);
+    await expect(as(B, () => db.exec(`update public.exercises set name_de = 'x' where user_id is null`))).resolves.toBeDefined();
+    const changed = await db.query("select count(*)::int as n from public.exercises where name_de = 'x'");
+    expect((changed.rows[0] as { n: number }).n).toBe(0);
+  });
+
+  it("prevents adding ingredients to another user's recipe", async () => {
+    const r = await as(A, () => db.query<{ id: string }>(`insert into public.recipes (user_id, name) values ('${A}', 'Chili') returning id`));
+    const recipeId = r.rows[0].id;
+    await as(A, () =>
+      db.exec(`insert into public.recipe_ingredients (recipe_id, user_id, name, source, amount_g, nutrients_per_100g) values ('${recipeId}', '${A}', 'Bohnen', 'custom', 400, '{}')`),
+    );
+    await expect(
+      as(B, () =>
+        db.exec(`insert into public.recipe_ingredients (recipe_id, user_id, name, source, amount_g, nutrients_per_100g) values ('${recipeId}', '${B}', 'x', 'custom', 1, '{}')`),
+      ),
+    ).rejects.toThrow(/row-level security/);
+    const seen = await as(B, () => db.query("select * from public.recipe_ingredients"));
+    expect(seen.rows).toHaveLength(0);
+  });
+
+  it("prevents logging sets into another user's workout", async () => {
+    const w = await as(A, () => db.query<{ id: string }>(`insert into public.workouts (user_id, name, workout_date) values ('${A}', 'Push', '2026-11-20') returning id`));
+    const ex = await db.query<{ id: string }>("select id from public.exercises where user_id is null limit 1");
+    await expect(
+      as(B, () =>
+        db.exec(`insert into public.workout_sets (workout_id, user_id, exercise_id, reps, weight_kg) values ('${w.rows[0].id}', '${B}', '${ex.rows[0].id}', 8, 100)`),
+      ),
+    ).rejects.toThrow(/row-level security/);
   });
 });

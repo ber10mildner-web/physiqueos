@@ -51,6 +51,9 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
           ))}
         </Select>
       </Field>
+      <Field label={t.tracking.waterGoal}>
+        <Input name="water_target_ml" type="number" inputMode="numeric" step="100" min={500} max={8000} placeholder="2500" defaultValue={profile?.water_target_ml ?? ""} />
+      </Field>
       {status === "error" && <Notice tone="error">{t.errors.invalidInput}</Notice>}
       <Button type="submit" variant="secondary" disabled={pending} className="w-full">
         {pending ? t.common.saving : status === "saved" ? `✓ ${t.common.saved}` : t.common.save}

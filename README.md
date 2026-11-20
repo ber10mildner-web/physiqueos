@@ -13,6 +13,14 @@ Persönliche Fitness-App für Ernährung, Körpergewicht und Fortschrittsfotos. 
 - **Körpergewicht:** ein Eintrag pro Tag, 7-Tage-Schnitt, Verlauf als Diagramm.
 - **Fortschrittsfotos:** privater Speicher, Bilder werden vor dem Upload verkleinert (Metadaten wie GPS werden dabei entfernt), Vergleich vorher/nachher.
 
+## Neu in Meilenstein 2
+
+- **Rezepte:** Zutaten suchen, scannen oder als Liste einfügen, Gewicht nach dem Kochen, dann „300 g davon“ eintragen.
+- **Schnell-Tracking:** Favoriten, Mahlzeit von gestern kopieren, Wasser.
+- **Training:** Übungsbibliothek und eigene Übungen, Pläne, Sätze mit Vorschlag fürs nächste Gewicht, Bestleistungen, Cardio.
+- **Schlaf & Erholung:** Schlaf-Score, HRV, Ruhepuls, Body Battery, Schritte.
+- **Claude-Anbindung (MCP):** Claude liest deine Daten, trägt Rezepte und Mahlzeiten ein und schreibt Wochenauswertungen. Einrichtung in [docs/SETUP.md](docs/SETUP.md#claude-verbinden).
+
 ## Lokale Entwicklung
 
 ```bash

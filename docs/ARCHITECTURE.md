@@ -67,12 +67,20 @@ Gut zu wissen: Fotos werden auf ca. 200–400 KB verkleinert, 1 GB reicht damit 
 
 ## Roadmap
 
-1. **Meilenstein 1 (dieser Stand):** Profil & Ziele, Gewicht, Fotos, Tagebuch mit Barcode/Suche/manuell, Ballaststoffe und Mikronährstoffe.
-2. **Rezepte:** Rezept aus Zutatenliste anlegen (Foto der Zutatenliste → Zutaten + Mengen, korrigierbar), Gesamtgewicht nach dem Kochen, dann „300 g davon“ eintragen. Neue Tabellen `recipes` und `recipe_ingredients`, Quelle `recipe`.
+1. **Meilenstein 1 (fertig):** Profil & Ziele, Gewicht, Fotos, Tagebuch mit Barcode/Suche/manuell, Ballaststoffe und Mikronährstoffe.
+2. **Meilenstein 2 (fertig, 2026-11-20): Rezepte, Schnell-Tracking, Claude-Anbindung, Training, Schlaf.** Ursprünglicher Plan für Rezepte: Rezept aus Zutatenliste anlegen (Foto der Zutatenliste → Zutaten + Mengen, korrigierbar), Gesamtgewicht nach dem Kochen, dann „300 g davon“ eintragen. Neue Tabellen `recipes` und `recipe_ingredients`, Quelle `recipe`.
 3. **Claude-Anbindung (MCP-Server):** Route `/api/mcp` mit persönlichen Zugriffstokens (gehasht gespeichert). Werkzeuge: Tagebuch, Gewicht, Ziele, Fotos lesen; Rezepte und Einträge schreiben. Damit kann Claude Rezeptfotos kostenlos über das Claude-Abo auslesen und wöchentliche Auswertungen erstellen. Die Datenzugriffsschicht in `src/lib/data` ist dafür vorbereitet.
 4. **Training:** Übungsbibliothek, Pläne, Sätze/Wiederholungen/Gewicht, Bestleistungen, Cardio.
 5. **Garmin:** Schlaf, HRV, Ruhepuls, Aktivitäten. Offizielle API nur für Firmen; privat über eine inoffizielle Garmin-Connect-Anbindung (kann bei Änderungen durch Garmin brechen).
 6. **Analytics:** Phasenvergleich, Kalorien vs. Gewichtstrend (tatsächlicher Verbrauch), Trainingsvolumen.
+
+## Meilenstein 2: wie es gebaut ist
+
+- **Rezepte** (`recipes`, `recipe_ingredients`): Zutaten sind normale Lebensmittel. Nährwerte pro 100 g = Summe der Zutaten / Gewicht nach dem Kochen (ohne Angabe: Rohgewicht). Ein Nährstoff gilt nur als bekannt, wenn er bei allen Zutaten bekannt ist. Tagebucheinträge speichern einen Schnappschuss (`source = recipe`, `recipe_id`).
+- **Schnell-Tracking:** `foods.is_favorite`, Mahlzeit von einem anderen Tag kopieren, `water_logs` + `profiles.water_target_ml`.
+- **Claude (MCP):** `/api/mcp/<token>`, Streamable HTTP über `mcp-handler`. Tokens (`pos_…`) werden nur als SHA-256-Hash gespeichert und einmal angezeigt; widerrufbar, optional nur lesend. Die Route sucht den Token mit dem Secret key (`SUPABASE_SECRET_KEY`, nur serverseitig) und arbeitet danach ausschließlich mit Abfragen, die auf `user_id` des Token-Besitzers eingeschränkt sind. Werkzeuge in `src/lib/mcp/server.ts`; Claude darf keine Nährwerte erfinden (nur Datenbank-Treffer oder Werte vom Etikett/Foto).
+- **Training:** eingebaute Übungen (`exercises.user_id is null`) + eigene, Pläne mit Satz- und Wiederholungsbereich, Sätze pro Training. Vorschlag nach doppelter Progression: Wenn alle Arbeitssätze das obere Ende des Bereichs erreichen, Gewicht um eine Stufe erhöhen (2,5 kg, Kurzhantel/Kettlebell 2 kg), sonst gleiches Gewicht und mehr Wiederholungen. Geschätztes 1RM nach Epley, nur bis 12 Wiederholungen.
+- **Schlaf & Erholung** (`daily_health`): ein Datensatz pro Tag, manuell oder über Claude. Garmin bietet Privatpersonen keine offizielle Schnittstelle; ein automatischer Abgleich bräuchte eine inoffizielle Anbindung mit Garmin-Zugangsdaten und ist bewusst noch nicht gebaut.
 
 ## Bekannte Lücken in Meilenstein 1
 

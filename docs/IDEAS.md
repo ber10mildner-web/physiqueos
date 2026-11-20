@@ -4,12 +4,12 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 
 ## In Arbeit / beschlossen (2026-11-20)
 
-- [ ] Schnell-Tracking: Mahlzeit vom Vortag kopieren, Favoriten, Wasser
-- [ ] Rezepte: Zutaten (Suche, Barcode, manuell) + Gesamtgewicht nach dem Kochen, danach „300 g davon“ eintragen
-- [ ] Claude-Anbindung (MCP-Server): Claude liest Ernährung, Gewicht, Fotos; trägt Rezepte und Mahlzeiten ein; Rezeptfotos kostenlos über das Claude-Abo auslesen
-- [ ] Wöchentliche Auswertung durch Claude (Kalorien, Makros, Ballaststoffe, Mikronährstoffe, Gewichtstrend, Fotos, Training)
-- [ ] Training: Übungsbibliothek, eigene Übungen, Pläne, Sätze/Wiederholungen/Gewicht, Bestleistungen, Kraftverlauf, Cardio
-- [ ] Garmin: Schlaf-Score, HRV, Ruhepuls, Aktivitäten (offizielle API nur für Firmen; privat inoffiziell oder über Strava)
+- [x] Schnell-Tracking: Mahlzeit vom Vortag kopieren, Favoriten, Wasser
+- [x] Rezepte: Zutaten (Suche, Barcode, manuell) + Gesamtgewicht nach dem Kochen, danach „300 g davon“ eintragen
+- [x] Claude-Anbindung (MCP-Server): Claude liest Ernährung, Gewicht, Fotos; trägt Rezepte und Mahlzeiten ein; Rezeptfotos kostenlos über das Claude-Abo auslesen
+- [x] Wöchentliche Auswertung durch Claude (Kalorien, Makros, Ballaststoffe, Mikronährstoffe, Gewichtstrend, Fotos, Training)
+- [x] Training: Übungsbibliothek, eigene Übungen, Pläne, Sätze/Wiederholungen/Gewicht, Bestleistungen, Kraftverlauf, Cardio
+- [~] Garmin (Werte manuell oder über Claude eintragbar; automatischer Abgleich offen): Schlaf-Score, HRV, Ruhepuls, Aktivitäten (offizielle API nur für Firmen; privat inoffiziell oder über Strava)
 
 ## Ideen von Claude
 
@@ -24,9 +24,12 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - Offline-Modus (Einträge zwischenspeichern, später synchronisieren)
 - Export als CSV
 - Heller Modus
-- Trainingsplan-Empfehlungen (progressive Überlastung: wann Gewicht erhöhen)
+- [x] Trainingsplan-Empfehlungen (progressive Überlastung: wann Gewicht erhöhen)
 - Cardio-Zonen aus Garmin-Herzfrequenz
 - Schlaf vs. Trainingsleistung vs. Kalorien in der Analyse vergleichen
+- Pausen-Timer zwischen Sätzen
+- Kraftverlauf als Diagramm pro Übung
+- Strava als Umweg für Garmin-Aktivitäten (offizielle API)
 - Gemeinsamer Produkt-Cache für alle Nutzer (wichtig, falls die App verkauft wird)
 - Bezahlmodell/Abos erst, wenn verkauft werden soll (Vercel Pro nötig, Hobby ist nur nicht-kommerziell)
 

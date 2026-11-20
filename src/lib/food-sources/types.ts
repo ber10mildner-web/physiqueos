@@ -1,6 +1,6 @@
 import type { NutrientMap } from "@/lib/nutrition/nutrients";
 
-export type FoodSource = "openfoodfacts" | "usda" | "custom";
+export type FoodSource = "openfoodfacts" | "usda" | "custom" | "recipe";
 
 /**
  * A food as returned by a lookup – not yet stored. Values per 100 g.
@@ -17,6 +17,7 @@ export interface FoodCandidate {
   serving_size_g: number | null;
   image_url: string | null;
   nutrients: NutrientMap;
+  is_favorite?: boolean;
 }
 
 export class SourceUnavailableError extends Error {

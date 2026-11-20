@@ -1,32 +1,23 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { isIsoDate } from "@/lib/dates";
+import { upsertWeight } from "@/lib/data/mutations";
+import { upsertHealth } from "@/lib/data/health";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-const weightSchema = z.object({
-  entry_date: z.string().refine(isIsoDate),
-  weight_kg: z.preprocess((v) => Number(String(v).replace(",", ".")), z.number().min(20).max(400)),
-  note: z.string().trim().max(500).transform((v) => v || null),
-});
-
 /** One weight per day: logging again on the same date replaces the value. */
 export async function saveWeight(formData: FormData): Promise<ActionResult> {
-  const { supabase, userId } = await requireUser();
-  const parsed = weightSchema.safeParse({
-    entry_date: formData.get("entry_date"),
-    weight_kg: formData.get("weight_kg"),
-    note: formData.get("note") ?? "",
-  });
-  if (!parsed.success) return { ok: false, error: "invalid" };
-  const { error } = await supabase
-    .from("weight_entries")
-    .upsert({ ...parsed.data, weight_kg: Math.round(parsed.data.weight_kg * 100) / 100, user_id: userId }, { onConflict: "user_id,entry_date" });
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/", "layout");
-  return { ok: true };
+  const res = await upsertWeight(
+    {
+      date: String(formData.get("entry_date") ?? ""),
+      weight_kg: Number(String(formData.get("weight_kg") ?? "").replace(",", ".")),
+      note: String(formData.get("note") ?? "").trim() || null,
+    },
+    await requireUser(),
+  );
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
 }
 
 export async function deleteWeight(id: string): Promise<ActionResult> {
@@ -35,4 +26,21 @@ export async function deleteWeight(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+export async function saveHealth(input: {
+  date: string;
+  sleep_score: number | null;
+  sleep_minutes: number | null;
+  resting_hr: number | null;
+  hrv_ms: number | null;
+  body_battery: number | null;
+  steps: number | null;
+  stress: number | null;
+}): Promise<ActionResult> {
+  // Only send fields the user actually filled in, so existing values stay untouched.
+  const values = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== null));
+  const res = await upsertHealth({ ...values, date: input.date, source: "manual" } as Parameters<typeof upsertHealth>[0], await requireUser());
+  if (res.ok) revalidatePath("/body");
+  return res;
 }

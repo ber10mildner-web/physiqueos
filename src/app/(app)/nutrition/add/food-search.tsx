@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -14,17 +14,17 @@ interface Results {
   unavailable: FoodSource[];
 }
 
-const SOURCE_NAMES: Record<FoodSource, string> = { openfoodfacts: "Open Food Facts", usda: "USDA FoodData Central", custom: "PhysiqueOS" };
+const SOURCE_NAMES: Record<FoodSource, string> = { openfoodfacts: "Open Food Facts", usda: "USDA FoodData Central", custom: "PhysiqueOS", recipe: "PhysiqueOS" };
 
-export function FoodSearch({ recent, onSelect }: { recent: FoodCandidate[]; onSelect: (f: FoodCandidate) => void }) {
+export function FoodSearch({ recent, favorites, onSelect, initialQuery }: { recent: FoodCandidate[]; favorites: FoodCandidate[]; onSelect: (f: FoodCandidate) => void; initialQuery?: string }) {
   const { t } = useI18n();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery ?? "");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Results | null>(null);
   const [error, setError] = useState(false);
 
-  async function run(e: React.FormEvent) {
-    e.preventDefault();
+  async function run(e?: React.FormEvent) {
+    e?.preventDefault();
     if (q.trim().length < 2) return;
     setLoading(true);
     setError(false);
@@ -38,6 +38,15 @@ export function FoodSearch({ recent, onSelect }: { recent: FoodCandidate[]; onSe
       setLoading(false);
     }
   }
+
+  const ran = useRef(false);
+  useEffect(() => {
+    if (initialQuery && !ran.current) {
+      ran.current = true;
+      void run();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const section = (title: string, items: FoodCandidate[], hint?: string) =>
     items.length > 0 && (
@@ -85,7 +94,10 @@ export function FoodSearch({ recent, onSelect }: { recent: FoodCandidate[]; onSe
           {empty && <EmptyState>{t.addFood.noResults}</EmptyState>}
         </>
       ) : (
-        section(t.addFood.recent, recent)
+        <>
+          {section(t.tracking.favorites, favorites)}
+          {section(t.addFood.recent, recent.filter((r) => !favorites.some((f) => f.id === r.id)))}
+        </>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 2. Den kompletten Inhalt von [`supabase/migrations/20261119000000_init.sql`](../supabase/migrations/20261119000000_init.sql) einfügen und **Run** antippen. Es muss „Success. No rows returned“ erscheinen.
 3. Wieder **New query**, den Inhalt von [`supabase/migrations/20261119000100_storage.sql`](../supabase/migrations/20261119000100_storage.sql) einfügen und **Run**.
 4. Und noch einmal mit [`supabase/migrations/20261120000000_grants.sql`](../supabase/migrations/20261120000000_grants.sql).
+5. Und zuletzt mit [`supabase/migrations/20261120000100_recipes_training_api.sql`](../supabase/migrations/20261120000100_recipes_training_api.sql) (Rezepte, Training, Wasser, Schlaf, Claude-Zugang).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 
@@ -32,7 +33,7 @@ Du brauchst:
 - die **Project URL** (`https://xxxx.supabase.co`)
 - den **Publishable key** (`sb_publishable_…`)
 
-Den *secret key* brauchst du nicht und solltest ihn nirgends eintragen.
+Für die Claude-Anbindung brauchst du zusätzlich den **Secret key** (`sb_secret_…`, Project Settings → API Keys → Secret keys). Er kommt **nur** in Vercel als `SUPABASE_SECRET_KEY`, niemals in den Browser oder in den Code.
 
 ## 4. App auf Vercel veröffentlichen
 
@@ -41,6 +42,7 @@ Den *secret key* brauchst du nicht und solltest ihn nirgends eintragen.
 3. Unter **Environment Variables** eintragen:
    - `NEXT_PUBLIC_SUPABASE_URL` = deine Project URL
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = dein Publishable key
+   - `SUPABASE_SECRET_KEY` = dein Secret key (nur für die Claude-Anbindung)
    - optional `USDA_API_KEY` (siehe unten)
 4. **Deploy**. Nach etwa einer Minute bekommst du eine Adresse wie `physiqueos-xyz.vercel.app`.
 
@@ -63,3 +65,15 @@ Zurück in Supabase: **Authentication → URL Configuration**
 ## Optional: USDA-Schlüssel
 
 Ohne eigenen Schlüssel nutzt die App den `DEMO_KEY`, der nur wenige Anfragen pro Stunde erlaubt. Kostenlosen Schlüssel holen: <https://fdc.nal.usda.gov/api-key-signup>, dann in Vercel unter **Settings → Environment Variables** als `USDA_API_KEY` eintragen und neu deployen.
+
+## Claude verbinden
+
+1. In der App: **Profil → Claude verbinden → Verbindung erstellen**. Die angezeigte Adresse kopieren (sie wird nur einmal gezeigt und ist wie ein Passwort).
+2. Auf <https://claude.ai>: **Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen**. Name `PhysiqueOS`, als URL die kopierte Adresse.
+3. In einem Chat den Konnektor einschalten und z. B. schreiben: „Mach mir eine Wochenauswertung“ oder ein Foto einer Zutatenliste schicken: „Leg daraus ein Rezept an, gekocht 1.150 g“.
+
+Verbindung verloren oder Adresse geteilt? In der App widerrufen und eine neue erstellen.
+
+## Update auf einen neuen Stand
+
+Wenn eine neue Datei in `supabase/migrations/` dazukommt, führe nur diese im SQL Editor aus (Schritt 2). Vercel aktualisiert die App von selbst, sobald neuer Code auf GitHub liegt.

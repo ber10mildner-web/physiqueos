@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n";
-import { getDiary, getGoalOn } from "@/lib/data";
+import { getDiary, getGoalOn, getProfile } from "@/lib/data";
+import { getWater } from "@/lib/data/tracking";
 import { getToday } from "@/lib/auth";
 import { addDays, formatDate, isIsoDate } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
@@ -12,13 +13,16 @@ import { Card, Page, PageHeader, buttonClass } from "@/components/ui";
 import { DaySummary } from "@/components/day-summary";
 import { EntryRow } from "./entry-row";
 import { NutrientDetails } from "./nutrient-details";
+import { WaterCard } from "./water-card";
+import { CopyMealButton } from "./copy-meal-button";
+import { BookOpen } from "lucide-react";
 
 export default async function NutritionPage({ searchParams }: PageProps<"/nutrition">) {
   const { t, locale } = await getI18n();
   const today = await getToday();
   const sp = await searchParams;
   const date = isIsoDate(sp.date) ? sp.date : today;
-  const [entries, goal] = await Promise.all([getDiary(date), getGoalOn(date)]);
+  const [entries, goal, water, profile] = await Promise.all([getDiary(date), getGoalOn(date), getWater(date), getProfile()]);
   const totals = sumItems(entries);
   const label =
     date === today ? t.common.today : date === addDays(today, -1) ? t.common.yesterday : formatDate(date, locale, { weekday: "long", day: "numeric", month: "long" });
@@ -78,11 +82,27 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
                   ))}
                 </ul>
               ) : (
-                <p className="px-4 pb-4 text-sm text-faint">{t.nutrition.empty}</p>
+                <div className="px-4 pb-4">
+                  <CopyMealButton fromDate={addDays(date, -1)} toDate={date} meal={meal} />
+                </div>
               )}
             </Card>
           );
         })}
+
+        <Card>
+          <WaterCard date={date} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} />
+        </Card>
+
+        <Link href="/nutrition/recipes" className="block">
+          <Card className="flex items-center gap-3 transition hover:bg-surface-2">
+            <div className="grid size-11 place-items-center rounded-2xl bg-surface-3">
+              <BookOpen className="size-5 text-accent" />
+            </div>
+            <div className="flex-1 font-medium">{t.recipes.title}</div>
+            <ChevronRight className="size-5 text-faint" />
+          </Card>
+        </Link>
 
         {entries.length > 0 && (
           <Card>

@@ -9,6 +9,8 @@ import { Card, Page, PageHeader, SectionTitle, cx } from "@/components/ui";
 import { WeightForm } from "./weight-form";
 import { WeightChart } from "./weight-chart";
 import { WeightHistory } from "./weight-history";
+import { HealthForm, HealthList } from "./health";
+import { getHealthRange } from "@/lib/data/health";
 import { formatNumber } from "@/lib/format";
 
 const RANGES = { "30": 30, "90": 90, "365": 365, all: null } as const;
@@ -22,7 +24,7 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
   const days = RANGES[range];
   const from = days ? addDays(today, -days + 1) : undefined;
   // Fetch 6 extra days so the moving average at the start of the range is correct.
-  const weights = await getWeights(from ? addDays(from, -6) : undefined);
+  const [weights, health] = await Promise.all([getWeights(from ? addDays(from, -6) : undefined), getHealthRange(addDays(today, -13), today)]);
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
   const visible = from ? trend.filter((p) => p.date >= from) : trend;
   const change = trendChange(trend);
@@ -82,6 +84,15 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
             <ChevronRight className="size-5 text-faint" />
           </Card>
         </Link>
+
+        <Card>
+          <SectionTitle>{t.health.title}</SectionTitle>
+          <HealthForm today={today} />
+        </Card>
+        <Card>
+          <SectionTitle>{t.health.recent}</SectionTitle>
+          <HealthList days={health} />
+        </Card>
 
         {weights.length > 0 && (
           <Card>
