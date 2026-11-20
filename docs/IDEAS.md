@@ -28,6 +28,10 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - Cardio-Zonen aus Garmin-Herzfrequenz
 - Schlaf vs. Trainingsleistung vs. Kalorien in der Analyse vergleichen
 - Pausen-Timer zwischen Sätzen
+- Garmin-Kalorienverbrauch (aktive kcal) nutzen, um das Kalorienziel an Trainingstagen anzupassen
+- Übersicht/Dashboard: Schlaf, Body Battery und Schritte von heute als Kacheln
+- Hinweis in der App, wenn der Garmin-Abgleich mehrere Tage fehlschlägt
+- Automatische Wochenauswertung von Claude jeden Sonntag (geplanter Chat)
 - Kraftverlauf als Diagramm pro Übung
 - Strava als Umweg für Garmin-Aktivitäten (offizielle API)
 - Gemeinsamer Produkt-Cache für alle Nutzer (wichtig, falls die App verkauft wird)
