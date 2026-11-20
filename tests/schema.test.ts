@@ -27,6 +27,7 @@ beforeAll(async () => {
   await db.exec(`
     create role anon nologin;
     create role authenticated nologin;
+    create role service_role nologin;
     create schema auth;
     create table auth.users (id uuid primary key, raw_user_meta_data jsonb default '{}'::jsonb);
     create function auth.uid() returns uuid language sql stable as
@@ -36,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -157,5 +158,15 @@ describe("schema", () => {
         db.exec(`insert into public.workout_sets (workout_id, user_id, exercise_id, reps, weight_kg) values ('${w.rows[0].id}', '${B}', '${ex.rows[0].id}', 8, 100)`),
       ),
     ).rejects.toThrow(/row-level security/);
+  });
+
+  it("never lets the browser read the encrypted Garmin tokens", async () => {
+    await db.exec(`insert into public.garmin_connections (user_id, enc_tokens, display_name) values ('${A}', 'v1.secret', 'leo')`);
+    const status = await as(A, () => db.query("select display_name, status from public.garmin_connections"));
+    expect(status.rows).toEqual([{ display_name: "leo", status: "ok" }]);
+    await expect(as(A, () => db.query("select enc_tokens from public.garmin_connections"))).rejects.toThrow(/permission denied/);
+    await expect(as(A, () => db.exec(`update public.garmin_connections set display_name = 'x'`))).rejects.toThrow(/permission denied/);
+    const seenByB = await as(B, () => db.query("select display_name from public.garmin_connections"));
+    expect(seenByB.rows).toHaveLength(0);
   });
 });

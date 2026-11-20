@@ -9,7 +9,7 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Claude-Anbindung (MCP-Server): Claude liest Ernährung, Gewicht, Fotos; trägt Rezepte und Mahlzeiten ein; Rezeptfotos kostenlos über das Claude-Abo auslesen
 - [x] Wöchentliche Auswertung durch Claude (Kalorien, Makros, Ballaststoffe, Mikronährstoffe, Gewichtstrend, Fotos, Training)
 - [x] Training: Übungsbibliothek, eigene Übungen, Pläne, Sätze/Wiederholungen/Gewicht, Bestleistungen, Kraftverlauf, Cardio
-- [~] Garmin (Werte manuell oder über Claude eintragbar; automatischer Abgleich offen): Schlaf-Score, HRV, Ruhepuls, Aktivitäten (offizielle API nur für Firmen; privat inoffiziell oder über Strava)
+- [~] Garmin (Versuch gebaut 2026-11-20: einmalige Anmeldung am Computer, danach täglicher Abgleich; muss sich im Alltag bewähren): Schlaf-Score, HRV, Ruhepuls, Aktivitäten (offizielle API nur für Firmen; privat inoffiziell oder über Strava)
 
 ## Ideen von Claude
 

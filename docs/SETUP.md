@@ -18,6 +18,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 3. Wieder **New query**, den Inhalt von [`supabase/migrations/20261119000100_storage.sql`](../supabase/migrations/20261119000100_storage.sql) einfügen und **Run**.
 4. Und noch einmal mit [`supabase/migrations/20261120000000_grants.sql`](../supabase/migrations/20261120000000_grants.sql).
 5. Und zuletzt mit [`supabase/migrations/20261120000100_recipes_training_api.sql`](../supabase/migrations/20261120000100_recipes_training_api.sql) (Rezepte, Training, Wasser, Schlaf, Claude-Zugang).
+6. Für den Garmin-Abgleich: [`supabase/migrations/20261120000200_garmin.sql`](../supabase/migrations/20261120000200_garmin.sql).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 
@@ -43,6 +44,7 @@ Für die Claude-Anbindung brauchst du zusätzlich den **Secret key** (`sb_secret
    - `NEXT_PUBLIC_SUPABASE_URL` = deine Project URL
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = dein Publishable key
    - `SUPABASE_SECRET_KEY` = dein Secret key (nur für die Claude-Anbindung)
+   - `CRON_SECRET` = eine lange, zufällige Zeichenkette, die du dir ausdenkst (mind. 32 Zeichen). Damit darf nur Vercel den täglichen Garmin-Abgleich starten.
    - optional `USDA_API_KEY` (siehe unten)
 4. **Deploy**. Nach etwa einer Minute bekommst du eine Adresse wie `physiqueos-xyz.vercel.app`.
 
@@ -73,6 +75,17 @@ Ohne eigenen Schlüssel nutzt die App den `DEMO_KEY`, der nur wenige Anfragen pr
 3. In einem Chat den Konnektor einschalten und z. B. schreiben: „Mach mir eine Wochenauswertung“ oder ein Foto einer Zutatenliste schicken: „Leg daraus ein Rezept an, gekocht 1.150 g“.
 
 Verbindung verloren oder Adresse geteilt? In der App widerrufen und eine neue erstellen.
+
+## Garmin verbinden (Versuch)
+
+Garmin bietet Privatpersonen keine offizielle Schnittstelle. Seit März 2026 blockt Garmin Anmeldungen von Servern, deshalb meldest du dich **einmal auf deinem Computer** an:
+
+1. Python installieren (<https://www.python.org/downloads/>, unter Windows „Add python.exe to PATH“ anhaken).
+2. Terminal bzw. Eingabeaufforderung öffnen: `pip install garminconnect`
+3. [`scripts/garmin_login.py`](../scripts/garmin_login.py) herunterladen und `python garmin_login.py` ausführen. Garmin-E-Mail, Passwort und ggf. den Bestätigungscode eingeben. Das Passwort geht nur an Garmin und wird nirgends gespeichert.
+4. Die ausgegebene Zeile (beginnt mit `{"di_token"`) kopieren, z. B. per Mail an dich selbst, und in der App unter **Profil → Garmin verbinden** einfügen.
+
+Die App erneuert den Schlüssel danach selbst und holt jeden Morgen Schlaf, HRV, Ruhepuls, Body Battery, Schritte, Stress und Cardio-Aktivitäten (Krafttraining nicht, das trägst du in der App ein). Der Schlüssel wird verschlüsselt gespeichert. Wenn die Seite einen Fehler zeigt, Schritte 3 und 4 wiederholen.
 
 ## Update auf einen neuen Stand
 
