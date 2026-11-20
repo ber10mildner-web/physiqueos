@@ -36,10 +36,8 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  // Supabase grants table privileges to these roles by default; RLS then restricts rows.
+  await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261120000000_grants.sql"), "utf8"));
   await db.exec(`
-    grant usage on schema public to authenticated, anon;
-    grant all on all tables in schema public to authenticated;
     insert into auth.users (id, raw_user_meta_data) values ('${A}', '{"locale":"en"}'), ('${B}', '{}');
   `);
 }, 60_000);

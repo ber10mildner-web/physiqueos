@@ -17,7 +17,11 @@ function check(error: { code?: string; message?: string } | null): void {
   if (error.code === "PGRST205" || error.code === "42P01" || /does not exist|schema cache/i.test(error.message ?? "")) {
     redirect("/setup?reason=database");
   }
-  throw error;
+  // Show the database error code and message instead of an opaque server error.
+  // These messages describe the schema (e.g. "permission denied for table x"), not user data.
+  console.error("database error", error);
+  const params = new URLSearchParams({ reason: "database_error", code: error.code ?? "", message: (error.message ?? "").slice(0, 300) });
+  redirect(`/setup?${params}`);
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));

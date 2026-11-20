@@ -16,6 +16,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 1. Im Projekt links auf **SQL Editor** (Symbol `>_`) und dann **New query**.
 2. Den kompletten Inhalt von [`supabase/migrations/20261119000000_init.sql`](../supabase/migrations/20261119000000_init.sql) einfügen und **Run** antippen. Es muss „Success. No rows returned“ erscheinen.
 3. Wieder **New query**, den Inhalt von [`supabase/migrations/20261119000100_storage.sql`](../supabase/migrations/20261119000100_storage.sql) einfügen und **Run**.
+4. Und noch einmal mit [`supabase/migrations/20261120000000_grants.sql`](../supabase/migrations/20261120000000_grants.sql).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 
