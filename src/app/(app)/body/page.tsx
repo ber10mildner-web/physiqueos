@@ -9,7 +9,7 @@ import { Card, Page, PageHeader, SectionTitle, cx } from "@/components/ui";
 import { WeightForm } from "./weight-form";
 import { WeightChart } from "./weight-chart";
 import { WeightHistory } from "./weight-history";
-import { HealthForm, HealthList } from "./health";
+import { HealthForm, HealthList, HealthToday } from "./health";
 import { getHealthRange } from "@/lib/data/health";
 import { formatNumber } from "@/lib/format";
 
@@ -87,7 +87,13 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
 
         <Card>
           <SectionTitle>{t.health.title}</SectionTitle>
-          <HealthForm today={today} />
+          <HealthToday day={health[0] ?? null} />
+          <details className="group mt-3">
+            <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-sm font-medium text-muted group-open:mb-3">
+              {t.health.log}
+            </summary>
+            <HealthForm today={today} />
+          </details>
         </Card>
         <Card>
           <SectionTitle>{t.health.recent}</SectionTitle>

@@ -106,3 +106,34 @@ export function HealthList({ days }: { days: DailyHealth[] }) {
     </ul>
   );
 }
+
+/** Latest day's values as tiles; only values that exist are shown. */
+export function HealthToday({ day }: { day: DailyHealth | null }) {
+  const { t, locale } = useI18n();
+  if (!day) return <EmptyState>{t.health.empty}</EmptyState>;
+  const tiles = [
+    day.sleep_minutes !== null && { label: t.health.sleepHours.replace(" (h)", ""), value: fmt(t.health.minutesShort, { h: Math.floor(day.sleep_minutes / 60), m: day.sleep_minutes % 60 }) },
+    day.sleep_score !== null && { label: t.health.sleepScore, value: String(day.sleep_score) },
+    day.body_battery !== null && { label: t.health.bodyBattery, value: String(day.body_battery) },
+    day.resting_hr !== null && { label: t.health.restingHr, value: `${day.resting_hr} bpm` },
+    day.hrv_ms !== null && { label: "HRV", value: `${day.hrv_ms} ms` },
+    day.stress !== null && { label: t.health.stress, value: String(day.stress) },
+    day.steps !== null && { label: t.health.steps, value: formatNumber(day.steps, locale) },
+  ].filter((x): x is { label: string; value: string } => Boolean(x));
+  return (
+    <div>
+      <div className="mb-2 text-xs text-muted">
+        {formatDate(day.entry_date, locale)}
+        {day.source === "garmin" ? " · Garmin" : ""}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {tiles.map((x) => (
+          <div key={x.label} className="rounded-2xl bg-surface-2 px-3 py-2.5">
+            <div className="truncate text-xs text-muted">{x.label}</div>
+            <div className="num mt-0.5 font-semibold">{x.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
