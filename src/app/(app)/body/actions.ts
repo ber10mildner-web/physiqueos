@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { upsertWeight } from "@/lib/data/mutations";
 import { upsertHealth } from "@/lib/data/health";
+import { addMedication, archiveMedication, setMedicationTaken, upsertSkin } from "@/lib/data/wellbeing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -41,6 +42,30 @@ export async function saveHealth(input: {
   // Only send fields the user actually filled in, so existing values stay untouched.
   const values = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== null));
   const res = await upsertHealth({ ...values, date: input.date, source: "manual" } as Parameters<typeof upsertHealth>[0], await requireUser());
+  if (res.ok) revalidatePath("/body");
+  return res;
+}
+
+export async function saveSkin(input: { date: string; score: number; areas: string[]; note: string | null }): Promise<ActionResult> {
+  const res = await upsertSkin(input as Parameters<typeof upsertSkin>[0], await requireUser());
+  if (res.ok) revalidatePath("/body");
+  return res;
+}
+
+export async function setMedicationTakenAction(input: { medicationId: string; date: string; taken: boolean }): Promise<ActionResult> {
+  const res = await setMedicationTaken(input, await requireUser());
+  if (res.ok) revalidatePath("/body");
+  return res;
+}
+
+export async function addMedicationAction(input: { name: string; dose: string | null; kind: string }): Promise<ActionResult> {
+  const res = await addMedication(input as Parameters<typeof addMedication>[0], await requireUser());
+  if (res.ok) revalidatePath("/body");
+  return res.ok ? { ok: true } : res;
+}
+
+export async function archiveMedicationAction(id: string): Promise<ActionResult> {
+  const res = await archiveMedication(id, await requireUser());
   if (res.ok) revalidatePath("/body");
   return res;
 }

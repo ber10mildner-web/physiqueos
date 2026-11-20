@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { check, ctxOr, num, type Ctx } from "./core";
 import { dateSchema, type Result } from "./mutations";
-import { CARDIO_ACTIVITIES, EQUIPMENT, MUSCLE_GROUPS, type CardioSession, type Exercise, type Workout, type WorkoutPlan, type WorkoutSet } from "./types";
+import { CARDIO_ACTIVITIES, EQUIPMENT, MUSCLE_GROUPS, type CardioSession, type TrainingRating, type Exercise, type Workout, type WorkoutPlan, type WorkoutSet } from "./types";
 
 const uuid = z.string().uuid();
 
@@ -92,7 +92,7 @@ function mapSet(r: Record<string, unknown>): WorkoutSet {
   return { ...(r as unknown as WorkoutSet), weight_kg: Number(r.weight_kg), rpe: num(r.rpe) };
 }
 
-const WORKOUT_COLUMNS = "id, plan_id, name, workout_date, started_at, finished_at, notes";
+const WORKOUT_COLUMNS = "id, plan_id, name, workout_date, started_at, finished_at, notes, feeling, energy, effort, rating_note";
 const SET_COLUMNS = "id, workout_id, exercise_id, position, reps, weight_kg, rpe, is_warmup, created_at";
 
 async function attachSets(workouts: Omit<Workout, "sets">[], ctx: Ctx, web: boolean): Promise<Workout[]> {
@@ -227,14 +227,75 @@ export async function getSetsForExercises(exerciseIds: string[], ctx?: Ctx): Pro
   return (data ?? []).map(mapSet);
 }
 
+const CARDIO_COLUMNS =
+  "id, session_date, activity, duration_min, distance_km, avg_hr, kcal, notes, source, feeling, energy, effort, rating_note, machine_minutes, machine_level, machine_floors, machine_steps, machine_kcal, machine_photo_path";
+
+function mapCardio(r: Record<string, unknown>): CardioSession {
+  return {
+    ...(r as unknown as CardioSession),
+    duration_min: Number(r.duration_min),
+    distance_km: num(r.distance_km),
+    machine_minutes: num(r.machine_minutes),
+    machine_level: num(r.machine_level),
+  };
+}
+
 export async function listCardio(range: { from?: string; to?: string } = {}, ctx?: Ctx): Promise<CardioSession[]> {
   const { supabase, userId } = await ctxOr(ctx);
-  let q = supabase.from("cardio_sessions").select("id, session_date, activity, duration_min, distance_km, avg_hr, kcal, notes, source").eq("user_id", userId);
+  let q = supabase.from("cardio_sessions").select(CARDIO_COLUMNS).eq("user_id", userId);
   if (range.from) q = q.gte("session_date", range.from);
   if (range.to) q = q.lte("session_date", range.to);
   const { data, error } = await q.order("session_date", { ascending: false }).limit(200);
   check(error, !ctx);
-  return (data ?? []).map((r) => ({ ...(r as CardioSession), duration_min: Number(r.duration_min), distance_km: num(r.distance_km) }));
+  return (data ?? []).map(mapCardio);
+}
+
+export async function getCardio(id: string, ctx?: Ctx): Promise<CardioSession | null> {
+  if (!uuid.safeParse(id).success) return null;
+  const { supabase, userId } = await ctxOr(ctx);
+  const { data, error } = await supabase.from("cardio_sessions").select(CARDIO_COLUMNS).eq("user_id", userId).eq("id", id).maybeSingle();
+  check(error, !ctx);
+  return data ? mapCardio(data) : null;
+}
+
+const scale = z.number().int().min(1).max(10).nullable();
+export const ratingSchema = z.object({ feeling: scale, energy: scale, effort: scale, rating_note: z.string().trim().max(1000).nullable() });
+
+/** Saves the subjective rating of a workout or cardio session. */
+export async function rateTraining(kind: "workout" | "cardio", id: string, input: TrainingRating, ctx?: Ctx): Promise<Result> {
+  const parsed = ratingSchema.safeParse(input);
+  if (!parsed.success || !uuid.safeParse(id).success) return { ok: false, error: "invalid" };
+  const { supabase, userId } = await ctxOr(ctx);
+  const row = { ...parsed.data, rating_note: parsed.data.rating_note || null };
+  const { data, error } = await supabase
+    .from(kind === "workout" ? "workouts" : "cardio_sessions")
+    .update(row)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return data ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+export const machineSchema = z.object({
+  machine_minutes: z.number().positive().max(1440).nullable(),
+  machine_level: z.number().min(0).max(30).nullable(),
+  machine_floors: z.number().int().min(0).max(5000).nullable(),
+  machine_steps: z.number().int().min(0).max(100000).nullable(),
+  machine_kcal: z.number().int().min(0).max(10000).nullable(),
+});
+export type MachineData = z.infer<typeof machineSchema>;
+
+/** Values from a machine display. Only the given fields are changed. */
+export async function setCardioMachine(id: string, input: Partial<MachineData> & { machine_photo_path?: string | null }, ctx?: Ctx): Promise<Result> {
+  const parsed = machineSchema.partial().extend({ machine_photo_path: z.string().regex(/^[0-9a-f-]{36}\/cardio\/[0-9a-f-]{36}\.jpg$/).nullable().optional() }).safeParse(input);
+  if (!parsed.success || !uuid.safeParse(id).success) return { ok: false, error: "invalid" };
+  const { supabase, userId } = await ctxOr(ctx);
+  if (parsed.data.machine_photo_path && !parsed.data.machine_photo_path.startsWith(`${userId}/`)) return { ok: false, error: "invalid" };
+  const { data, error } = await supabase.from("cardio_sessions").update(parsed.data).eq("id", id).eq("user_id", userId).select("id").maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return data ? { ok: true } : { ok: false, error: "not_found" };
 }
 
 export const cardioSchema = z.object({

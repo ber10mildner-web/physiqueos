@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * PhysiqueOS design tokens. Dark by default; a light theme can be added later
+ * Sigma design tokens. Dark by default; a light theme can be added later
  * by redefining these variables.
  */
 :root {

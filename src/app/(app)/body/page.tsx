@@ -12,6 +12,8 @@ import { WeightHistory } from "./weight-history";
 import { HealthForm, HealthList, HealthToday } from "./health";
 import { getHealthRange } from "@/lib/data/health";
 import { formatNumber } from "@/lib/format";
+import { getMedicationLogs, getSkinRange, listMedications } from "@/lib/data/wellbeing";
+import { MedicationChecklist, MedicationManager, SkinForm, WellbeingHistory } from "./wellbeing";
 
 const RANGES = { "30": 30, "90": 90, "365": 365, all: null } as const;
 type RangeKey = keyof typeof RANGES;
@@ -24,7 +26,14 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
   const days = RANGES[range];
   const from = days ? addDays(today, -days + 1) : undefined;
   // Fetch 6 extra days so the moving average at the start of the range is correct.
-  const [weights, health] = await Promise.all([getWeights(from ? addDays(from, -6) : undefined), getHealthRange(addDays(today, -13), today)]);
+  const [weights, health, skin, medications, medLogs] = await Promise.all([
+    getWeights(from ? addDays(from, -6) : undefined),
+    getHealthRange(addDays(today, -13), today),
+    getSkinRange(addDays(today, -13), today),
+    listMedications(),
+    getMedicationLogs(addDays(today, -13), today),
+  ]);
+  const last14 = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
   const visible = from ? trend.filter((p) => p.date >= from) : trend;
   const change = trendChange(trend);
@@ -84,6 +93,29 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
             <ChevronRight className="size-5 text-faint" />
           </Card>
         </Link>
+
+        <Card>
+          <SectionTitle>{t.wellbeing.title}</SectionTitle>
+          <SkinForm key={today} today={today} entry={skin.find((s) => s.entry_date === today) ?? null} />
+          <div className="mb-1.5 mt-5 text-sm font-medium">{t.wellbeing.meds}</div>
+          <MedicationChecklist
+            key={medLogs.length}
+            today={today}
+            medications={medications}
+            taken={medLogs.filter((l) => l.entry_date === today && l.medication_id).map((l) => l.medication_id!)}
+          />
+          <details className="group mt-3">
+            <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-sm font-medium text-muted group-open:mb-3">
+              {t.wellbeing.manage}
+            </summary>
+            <MedicationManager medications={medications} />
+          </details>
+          <p className="mt-3 text-xs text-faint">{t.wellbeing.privacy}</p>
+        </Card>
+        <Card>
+          <SectionTitle>{t.wellbeing.history}</SectionTitle>
+          <WellbeingHistory skin={skin} logs={medLogs} days={last14} />
+        </Card>
 
         <Card>
           <SectionTitle>{t.health.title}</SectionTitle>

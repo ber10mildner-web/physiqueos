@@ -20,6 +20,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 5. Und zuletzt mit [`supabase/migrations/20261120000100_recipes_training_api.sql`](../supabase/migrations/20261120000100_recipes_training_api.sql) (Rezepte, Training, Wasser, Schlaf, Claude-Zugang).
 6. Für den Garmin-Abgleich: [`supabase/migrations/20261120000200_garmin.sql`](../supabase/migrations/20261120000200_garmin.sql).
 7. Rechte für Claude-Anbindung und Garmin: [`supabase/migrations/20261120000300_service_role_grants.sql`](../supabase/migrations/20261120000300_service_role_grants.sql).
+8. Sigma-Funktionen (Trainingsbewertung, Gerätefoto, Haut & Medikamente, Ziele pro Wochentag): [`supabase/migrations/20261120000400_sigma.sql`](../supabase/migrations/20261120000400_sigma.sql).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 
@@ -72,10 +73,14 @@ Ohne eigenen Schlüssel nutzt die App den `DEMO_KEY`, der nur wenige Anfragen pr
 ## Claude verbinden
 
 1. In der App: **Profil → Claude verbinden → Verbindung erstellen**. Die angezeigte Adresse kopieren (sie wird nur einmal gezeigt und ist wie ein Passwort).
-2. Auf <https://claude.ai>: **Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen**. Name `PhysiqueOS`, als URL die kopierte Adresse.
+2. Auf <https://claude.ai>: **Einstellungen → Konnektoren → Eigenen Konnektor hinzufügen**. Name `Sigma`, als URL die kopierte Adresse.
 3. In einem Chat den Konnektor einschalten und z. B. schreiben: „Mach mir eine Wochenauswertung“ oder ein Foto einer Zutatenliste schicken: „Leg daraus ein Rezept an, gekocht 1.150 g“.
 
 Verbindung verloren oder Adresse geteilt? In der App widerrufen und eine neue erstellen.
+
+## Optional: Gerätefotos direkt in der App auslesen
+
+Ohne weitere Einrichtung liest Claude deine Stairmaster-Fotos kostenlos über den Konnektor aus (in der Claude-App: „Lies meine Gerätefotos in Sigma aus“). Wenn die App das Foto selbst auslesen soll, brauchst du einen API-Schlüssel von <https://platform.claude.com> mit etwas Guthaben (ein Foto kostet weniger als 1 Cent). Den Schlüssel in Vercel als `ANTHROPIC_API_KEY` eintragen und neu deployen. Dann erscheint beim Cardio-Eintrag der Knopf **Foto auslesen**.
 
 ## Garmin verbinden (Versuch)
 

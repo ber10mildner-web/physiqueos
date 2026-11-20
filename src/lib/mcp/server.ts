@@ -13,10 +13,12 @@ import { getDiary, getFood, getFoodByBarcode, getGoalOn, getPhotos, getProfile, 
 import { logFoodEntry, upsertWeight } from "@/lib/data/mutations";
 import { addWater, getWater } from "@/lib/data/tracking";
 import { getRecipe, listRecipes, logRecipeEntry, saveRecipe } from "@/lib/data/recipes";
-import { addCardio, addSet, finishWorkout, listCardio, listExercises, listPlans, listWorkouts, startWorkout } from "@/lib/data/training";
+import { addCardio, addSet, finishWorkout, getCardio, listCardio, listExercises, listPlans, listWorkouts, rateTraining, setCardioMachine, startWorkout } from "@/lib/data/training";
 import { getHealthRange, upsertHealth } from "@/lib/data/health";
+import { getMedicationLogs, getSkinRange, listMedications, logMedicationByName, upsertSkin } from "@/lib/data/wellbeing";
+import { withKcalEstimates } from "@/lib/cardio";
 import { PHOTO_BUCKET } from "@/lib/data";
-import { CARDIO_ACTIVITIES } from "@/lib/data/types";
+import { CARDIO_ACTIVITIES, SKIN_AREAS } from "@/lib/data/types";
 import { periodSummary } from "@/lib/summary";
 import { fetchOffProduct, searchOff } from "@/lib/food-sources/openfoodfacts";
 import { searchUsda } from "@/lib/food-sources/usda";
@@ -27,7 +29,7 @@ import { sumItems } from "@/lib/nutrition/calc";
 import { recipeNutrition } from "@/lib/nutrition/recipe";
 import { addDays, isIsoDate, todayIn } from "@/lib/dates";
 
-export const INSTRUCTIONS = `PhysiqueOS is the user's personal nutrition, body and training tracker (German/English).
+export const INSTRUCTIONS = `Sigma is the user's personal nutrition, body, training and wellbeing tracker (German/English).
 Conventions: dates are YYYY-MM-DD in the user's time zone (Europe/Berlin unless told otherwise). Food nutrients are per 100 g; amounts in grams.
 A nutrient missing from a food means "unknown", never zero. Totals report how many entries had data ("entries_with_data").
 
@@ -35,7 +37,13 @@ NEVER invent nutritional values. Use values from search_foods / lookup_barcode r
 
 Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then Open Food Facts for branded products, then USDA for generic foods), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
 
-Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery. Be concrete and honest about missing data.`;
+Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10), skin log and medication intake. Be concrete and honest about missing data.
+
+Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
+
+Cardio machine photos: when the user asks you to read their machine/Stairmaster photos, call list_cardio_photos, look at each with get_cardio_photo, read only values that are visible on the display (time, level, floors, steps, kcal), and save them with set_cardio_machine_data. Sigma then combines them with the Garmin data into a best calorie estimate ("kcal_estimate" in get_training).
+
+Skin and medication: log_skin and log_medication record what the user tells you. You may point out patterns, but never give medical advice or suggest changing medication; refer to a doctor.`;
 
 const date = z.string().refine(isIsoDate, "YYYY-MM-DD");
 const meal = z.enum(["breakfast", "lunch", "dinner", "snack"]);
@@ -105,6 +113,12 @@ const foodRef = {
   source_id: z.string().optional().describe("source_id from a search_foods result"),
   manual: manualFood.optional().describe("Only with values from a label or the user"),
 };
+
+/** Cardio session for Claude: without storage paths, with Sigma's calorie estimate. */
+function cardioOut(c: Awaited<ReturnType<typeof withKcalEstimates>>[number]) {
+  const { machine_photo_path, estimate, ...rest } = c;
+  return { ...rest, has_display_photo: Boolean(machine_photo_path), kcal_estimate: estimate?.kcal ?? null, kcal_estimate_sources: estimate?.sources ?? [] };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone = "Europe/Berlin") {
@@ -199,19 +213,49 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
   });
 
   tool("get_training", "Workouts (with sets) and cardio in a range, plus the exercise library and plans.", z.object({ from: date, to: date }), async ({ from, to }: { from: string; to: string }) => {
-    const [workouts, cardio, exercises, plans] = await Promise.all([listWorkouts({ from, to }, ctx), listCardio({ from, to }, ctx), listExercises(ctx), listPlans(ctx)]);
+    const [workouts, rawCardio, exercises, plans] = await Promise.all([listWorkouts({ from, to }, ctx), listCardio({ from, to }, ctx), listExercises(ctx), listPlans(ctx)]);
+    const cardio = await withKcalEstimates(rawCardio, ctx);
     const name = new Map(exercises.map((e) => [e.id, e.name_de]));
     return json({
       workouts: workouts.map((w) => ({ ...w, sets: w.sets.map((s) => ({ exercise: name.get(s.exercise_id), reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe, warmup: s.is_warmup })) })),
-      cardio,
+      cardio: cardio.map(cardioOut),
       plans: plans.map((p) => ({ name: p.name, exercises: p.exercises.map((e) => ({ exercise: name.get(e.exercise_id), sets: e.target_sets, reps: `${e.rep_min}-${e.rep_max}` })) })),
       exercise_library: exercises.map((e) => ({ exercise_id: e.id, name: e.name_de, name_en: e.name_en, muscle_group: e.muscle_group, equipment: e.equipment })),
     });
   });
 
-  tool("get_health", "Daily sleep score, sleep minutes, resting HR, HRV, body battery, steps, stress.", z.object({ from: date, to: date }), async ({ from, to }: { from: string; to: string }) =>
-    json(await getHealthRange(from, to, ctx)),
+  tool(
+    "get_health",
+    "Daily sleep score, sleep minutes, resting HR, HRV, body battery, steps, stress; skin log (score 0 = clear … 4 = severe, areas, note); medication/supplement intake and the user's medication list.",
+    z.object({ from: date, to: date }),
+    async ({ from, to }: { from: string; to: string }) => {
+      const [health, skin, meds, medLogs] = await Promise.all([getHealthRange(from, to, ctx), getSkinRange(from, to, ctx), listMedications(ctx), getMedicationLogs(from, to, ctx)]);
+      return json({
+        daily: health,
+        skin,
+        medication_list: meds.map((m) => ({ name: m.name, dose: m.dose, kind: m.kind })),
+        medication_taken: medLogs.map((l) => ({ date: l.entry_date, name: l.name, dose: l.dose })),
+      });
+    },
   );
+
+  tool("list_cardio_photos", "Cardio sessions that have a photo of the machine display, newest first, and whether values were already read.", z.object({ only_unread: z.boolean().default(true) }), async ({ only_unread }: { only_unread: boolean }) => {
+    const sessions = (await listCardio({}, ctx)).filter((c) => c.machine_photo_path);
+    return json(
+      sessions
+        .map((c) => ({ cardio_id: c.id, date: c.session_date, activity: c.activity, duration_min: c.duration_min, read: [c.machine_minutes, c.machine_level, c.machine_floors, c.machine_steps, c.machine_kcal].some((v) => v !== null) }))
+        .filter((c) => !only_unread || !c.read),
+    );
+  });
+
+  tool("get_cardio_photo", "Returns the machine display photo of a cardio session as an image.", z.object({ cardio_id: z.string().uuid() }), async ({ cardio_id }: { cardio_id: string }) => {
+    const c = await getCardio(cardio_id, ctx);
+    if (!c?.machine_photo_path) return fail("no photo for this session");
+    const file = await ctx.supabase.storage.from(PHOTO_BUCKET).download(c.machine_photo_path);
+    if (file.error || !file.data) return fail("could not load photo");
+    const buf = Buffer.from(await file.data.arrayBuffer());
+    return { content: [{ type: "text", text: `Machine display, ${c.session_date}, ${c.activity}, ${c.duration_min} min` }, { type: "image", data: buf.toString("base64"), mimeType: "image/jpeg" }] };
+  });
 
   // ---------- write ----------
   tool(
@@ -306,6 +350,69 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
     }),
     async (a: Parameters<typeof upsertHealth>[0]) => {
       const res = await upsertHealth(a, ctx);
+      return res.ok ? json({ ok: true }) : fail(res.error);
+    },
+    true,
+  );
+
+  tool(
+    "set_cardio_machine_data",
+    "Save values read from a machine display photo (only values visible on the display). Omitted fields stay unchanged.",
+    z.object({
+      cardio_id: z.string().uuid(),
+      minutes: z.number().positive().max(1440).optional(),
+      level: z.number().min(0).max(30).optional(),
+      floors: z.number().int().min(0).max(5000).optional(),
+      steps: z.number().int().min(0).max(100000).optional(),
+      kcal: z.number().int().min(0).max(10000).optional(),
+    }),
+    async (a: { cardio_id: string; minutes?: number; level?: number; floors?: number; steps?: number; kcal?: number }) => {
+      const values = { machine_minutes: a.minutes, machine_level: a.level, machine_floors: a.floors, machine_steps: a.steps, machine_kcal: a.kcal };
+      const res = await setCardioMachine(a.cardio_id, Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined)), ctx);
+      if (!res.ok) return fail(res.error);
+      const c = await getCardio(a.cardio_id, ctx);
+      const [withEst] = await withKcalEstimates(c ? [c] : [], ctx);
+      return json({ ok: true, kcal_estimate: withEst?.estimate ?? null });
+    },
+    true,
+  );
+
+  tool(
+    "rate_training",
+    "Save the user's subjective rating of a workout or cardio session: feeling, energy, effort (1-10 each) and a note. Pass workout_id or cardio_id (from get_training).",
+    z.object({
+      workout_id: z.string().uuid().optional(),
+      cardio_id: z.string().uuid().optional(),
+      feeling: z.number().int().min(1).max(10).optional(),
+      energy: z.number().int().min(1).max(10).optional(),
+      effort: z.number().int().min(1).max(10).optional(),
+      note: z.string().max(1000).optional(),
+    }),
+    async (a: { workout_id?: string; cardio_id?: string; feeling?: number; energy?: number; effort?: number; note?: string }) => {
+      if (!a.workout_id === !a.cardio_id) return fail("Pass exactly one of workout_id or cardio_id");
+      const res = await rateTraining(a.workout_id ? "workout" : "cardio", (a.workout_id ?? a.cardio_id)!, { feeling: a.feeling ?? null, energy: a.energy ?? null, effort: a.effort ?? null, rating_note: a.note ?? null }, ctx);
+      return res.ok ? json({ ok: true }) : fail(res.error);
+    },
+    true,
+  );
+
+  tool(
+    "log_skin",
+    "Log the skin condition for a day (replaces that day's entry). score: 0 clear, 1 a few, 2 some, 3 many, 4 severe.",
+    z.object({ date: date.optional(), score: z.number().int().min(0).max(4), areas: z.array(z.enum(SKIN_AREAS)).optional(), note: z.string().max(1000).optional() }),
+    async (a: { date?: string; score: number; areas?: (typeof SKIN_AREAS)[number][]; note?: string }) => {
+      const res = await upsertSkin({ date: a.date ?? today(), score: a.score, areas: a.areas ?? [], note: a.note ?? null, source: "claude" }, ctx);
+      return res.ok ? json({ ok: true }) : fail(res.error);
+    },
+    true,
+  );
+
+  tool(
+    "log_medication",
+    "Record that the user took a medication, supplement or skin-care product (matched to their list by name if possible).",
+    z.object({ name: z.string().min(1).max(100), dose: z.string().max(100).optional(), date: date.optional() }),
+    async (a: { name: string; dose?: string; date?: string }) => {
+      const res = await logMedicationByName({ name: a.name, dose: a.dose ?? null, date: a.date ?? today(), source: "claude" }, ctx);
       return res.ok ? json({ ok: true }) : fail(res.error);
     },
     true,

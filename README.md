@@ -1,6 +1,6 @@
-# PhysiqueOS
+# Sigma
 
-Persönliche Fitness-App für Ernährung, Körpergewicht und Fortschrittsfotos. Mobile-first PWA, Deutsch und Englisch.
+Persönliche Lifestyle-App für Ernährung, Training, Körper, Erholung und Gesundheit. Mobile-first PWA, Deutsch und Englisch.
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres, Auth, Storage) · Recharts · Vercel
 
@@ -20,6 +20,15 @@ Persönliche Fitness-App für Ernährung, Körpergewicht und Fortschrittsfotos. 
 - **Training:** Übungsbibliothek und eigene Übungen, Pläne, Sätze mit Vorschlag fürs nächste Gewicht, Bestleistungen, Cardio.
 - **Schlaf & Erholung:** Schlaf-Score, HRV, Ruhepuls, Body Battery, Schritte.
 - **Claude-Anbindung (MCP):** Claude liest deine Daten, trägt Rezepte und Mahlzeiten ein und schreibt Wochenauswertungen. Einrichtung in [docs/SETUP.md](docs/SETUP.md#claude-verbinden).
+
+## Neu in Sigma (Meilenstein 3)
+
+- **Neuer Name:** PhysiqueOS heißt jetzt Sigma.
+- **Trainingsbewertung:** nach jedem Krafttraining und jeder Cardio-Einheit Gefühl, Energie und Anstrengung (1–10) plus Notiz.
+- **Gerätefoto & Kalorien-Abgleich:** Foto vom Stairmaster-Display (Zeit, Stufe, Stockwerke, Schritte, kcal). Sigma verrechnet geleistete Arbeit (ACSM-Formel mit Körpergewicht), Garmin-Kalorien und Gerätewert gewichtet zu einer Schätzung. Auslesen kostenlos über Claude oder optional per API in der App.
+- **Haut & Medikamente:** Hautzustand pro Tag (0–4, Stellen, Notiz) und eine Abhakliste für Medikamente, Nahrungsergänzung und Hautpflege.
+- **Ziele pro Wochentag:** z. B. an Cardio-Tagen mehr Kalorien.
+- **Gedanke des Tages** und Knöpfe, die Claude mit einer passenden Auswertungsfrage öffnen.
 
 ## Lokale Entwicklung
 

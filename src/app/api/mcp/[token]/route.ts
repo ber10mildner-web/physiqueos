@@ -32,7 +32,7 @@ async function handle(req: Request, ctx: RouteContext<"/api/mcp/[token]">) {
   if (!profile) return new Response("Unauthorized", { status: 401 });
 
   const handler = createMcpHandler((server) => registerTools(server, { supabase: admin, userId: row.user_id }, row.can_write), {
-    serverInfo: { name: "PhysiqueOS", version: "0.2.0" },
+    serverInfo: { name: "Sigma", version: "0.3.0" },
     instructions: INSTRUCTIONS,
   });
   return handler(req);

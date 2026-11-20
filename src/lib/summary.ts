@@ -9,6 +9,9 @@ import { getDiaryRange, getGoalsBetween, getWeights } from "@/lib/data";
 import { getWaterRange } from "@/lib/data/tracking";
 import { listCardio, listExercises, listWorkouts } from "@/lib/data/training";
 import { getHealthRange } from "@/lib/data/health";
+import { getMedicationLogs, getSkinRange } from "@/lib/data/wellbeing";
+import { withKcalEstimates } from "@/lib/cardio";
+import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { addDays } from "@/lib/dates";
 import { dayNumber as dayNumberOf } from "@/lib/body/weight";
 import { sumItems } from "@/lib/nutrition/calc";
@@ -19,7 +22,7 @@ import { records, volume } from "@/lib/training/calc";
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 export async function periodSummary(from: string, to: string, ctx: Ctx) {
-  const [entries, goals, weights, water, workouts, cardio, health, exercises] = await Promise.all([
+  const [entries, goals, weights, water, workouts, rawCardio, health, exercises, skin, medLogs] = await Promise.all([
     getDiaryRange(from, to, ctx),
     getGoalsBetween(from, to, ctx),
     getWeights(addDays(from, -6), ctx),
@@ -28,7 +31,16 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
     listCardio({ from, to }, ctx),
     getHealthRange(from, to, ctx),
     listExercises(ctx),
+    getSkinRange(from, to, ctx),
+    getMedicationLogs(from, to, ctx),
   ]);
+  const cardio = await withKcalEstimates(rawCardio, ctx);
+  const goalFor = (d: string) => {
+    const g = goals.filter((x) => x.valid_from <= d).at(-1) ?? goals[0];
+    if (!g) return null;
+    const alt = g.alt && g.alt_days.includes(isoWeekday(d));
+    return { ...(alt ? g.alt! : g.base), alt_day: Boolean(alt) };
+  };
 
   const days: Record<string, unknown>[] = [];
   const loggedDays: ReturnType<typeof sumItems>[] = [];
@@ -46,6 +58,7 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
       fiber_g: r1(totals.fiber_g.value),
       fiber_data_for: `${totals.fiber_g.known}/${totals.fiber_g.of} entries`,
       water_ml: water[d] ?? 0,
+      goal: goalFor(d),
     });
   }
 
@@ -67,7 +80,7 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
 
   return {
     period: { from, to, days_logged: loggedDays.length, days_total: days.length },
-    goals,
+    goals: goals.map((g) => ({ valid_from: g.valid_from, phase: g.phase, normal_days: g.base, special_weekdays_iso: g.alt_days, special_day_targets: g.alt })),
     nutrition: { daily: days, averages_per_logged_day: nutrientAverages },
     weight: {
       entries: inRange.map((p) => ({ date: p.date, weight_kg: p.weight, avg7_kg: r1(p.average) })),
@@ -78,6 +91,7 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
         date: w.workout_date,
         name: w.name,
         finished: Boolean(w.finished_at),
+        rating: { feeling: w.feeling, energy: w.energy, effort: w.effort, note: w.rating_note },
         volume_kg: Math.round(volume(w.sets)),
         exercises: [...new Set(w.sets.map((s) => s.exercise_id))].map((id) => {
           const sets = w.sets.filter((s) => s.exercise_id === id);
@@ -89,8 +103,10 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
           };
         }),
       })),
-      cardio,
+      cardio: cardio.map(({ machine_photo_path, estimate, ...c }) => ({ ...c, has_display_photo: Boolean(machine_photo_path), kcal_estimate: estimate?.kcal ?? null })),
     },
     health,
+    skin,
+    medication_taken: medLogs.map((l) => ({ date: l.entry_date, name: l.name, dose: l.dose })),
   };
 }

@@ -55,6 +55,7 @@ export function DaySummary({ totals, goal, t, locale }: { totals: NutrientTotals
               </div>
               <div className="num mt-1 text-sm text-muted">
                 {t.dashboard.target}: {formatNumber(target, locale)} kcal · {t.phases[goal.phase]}
+                {goal.alt_day && <span className="text-accent"> · {t.dashboard.altDay}</span>}
               </div>
             </>
           ) : (

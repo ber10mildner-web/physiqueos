@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "PhysiqueOS",
-    short_name: "PhysiqueOS",
-    description: "Nutrition, body and progress tracking.",
+    name: "Sigma",
+    short_name: "Sigma",
+    description: "Nutrition, training, body and progress in one place.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",

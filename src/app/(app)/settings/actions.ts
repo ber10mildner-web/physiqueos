@@ -45,14 +45,34 @@ const goalSchema = z.object({
   fat_g: z.coerce.number().int().min(0).max(400),
   fiber_g: z.coerce.number().int().min(0).max(150),
   valid_from: z.string().refine(isIsoDate),
+  alt_days: z.array(z.coerce.number().int().min(1).max(7)).max(7),
+  alt_energy_kcal: z.coerce.number().int().min(800).max(8000).nullable(),
+  alt_protein_g: z.coerce.number().int().min(0).max(600).nullable(),
+  alt_carbs_g: z.coerce.number().int().min(0).max(1200).nullable(),
+  alt_fat_g: z.coerce.number().int().min(0).max(400).nullable(),
+  alt_fiber_g: z.coerce.number().int().min(0).max(150).nullable(),
 });
 
 /** Saves a goal. One goal per start date; saving again on the same date replaces it. */
 export async function saveGoal(formData: FormData): Promise<ActionResult> {
   const { supabase, userId } = await requireUser();
   const raw = Object.fromEntries(formData);
-  const parsed = goalSchema.safeParse({ ...raw, valid_from: raw.valid_from || (await getToday()) });
+  const altDays = formData.getAll("alt_days").map(String);
+  const opt = (k: string) => (String(raw[k] ?? "").trim() === "" ? null : raw[k]);
+  const parsed = goalSchema.safeParse({
+    ...raw,
+    valid_from: raw.valid_from || (await getToday()),
+    alt_days: altDays,
+    alt_energy_kcal: altDays.length ? opt("alt_energy_kcal") : null,
+    alt_protein_g: altDays.length ? opt("alt_protein_g") : null,
+    alt_carbs_g: altDays.length ? opt("alt_carbs_g") : null,
+    alt_fat_g: altDays.length ? opt("alt_fat_g") : null,
+    alt_fiber_g: altDays.length ? opt("alt_fiber_g") : null,
+  });
   if (!parsed.success) return { ok: false, error: "invalid" };
+  const alt = [parsed.data.alt_energy_kcal, parsed.data.alt_protein_g, parsed.data.alt_carbs_g, parsed.data.alt_fat_g, parsed.data.alt_fiber_g];
+  if (parsed.data.alt_days.length && alt.some((v) => v === null)) return { ok: false, error: "invalid" };
+  parsed.data.alt_days = [...new Set(parsed.data.alt_days)].sort();
   const { error } = await supabase
     .from("nutrition_goals")
     .upsert({ ...parsed.data, user_id: userId }, { onConflict: "user_id,valid_from" });

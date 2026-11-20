@@ -1,5 +1,5 @@
 """
-Einmalige Garmin-Anmeldung für PhysiqueOS (auf deinem eigenen Computer ausführen).
+Einmalige Garmin-Anmeldung für Sigma (auf deinem eigenen Computer ausführen).
 
     pip install garminconnect
     python garmin_login.py
