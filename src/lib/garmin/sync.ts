@@ -54,6 +54,7 @@ export async function syncUser(admin: SupabaseClient, userId: string, days = 3):
     const ctx = { supabase: admin, userId };
     const today = todayIn(row.time_zone);
     let written = 0;
+    let writeError: string | null = null;
     for (let i = 0; i < days; i++) {
       const date = addDays(today, -i);
       const day = await getDay(tokens, displayName, date);
@@ -61,6 +62,7 @@ export async function syncUser(admin: SupabaseClient, userId: string, days = 3):
       if (Object.keys(values).length === 0) continue;
       const res = await upsertHealth({ date, ...values, source: "garmin" }, ctx);
       if (res.ok) written++;
+      else writeError ??= res.error;
     }
 
     let acts = 0;
@@ -69,7 +71,9 @@ export async function syncUser(admin: SupabaseClient, userId: string, days = 3):
       if (!mapped) continue;
       const res = await addCardio(mapped, ctx);
       if (res.ok) acts++;
+      else writeError ??= res.error;
     }
+    if (writeError) return fail(`Speichern fehlgeschlagen: ${writeError}`);
 
     await admin
       .from("garmin_connections")

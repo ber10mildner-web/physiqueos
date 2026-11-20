@@ -19,6 +19,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 4. Und noch einmal mit [`supabase/migrations/20261120000000_grants.sql`](../supabase/migrations/20261120000000_grants.sql).
 5. Und zuletzt mit [`supabase/migrations/20261120000100_recipes_training_api.sql`](../supabase/migrations/20261120000100_recipes_training_api.sql) (Rezepte, Training, Wasser, Schlaf, Claude-Zugang).
 6. Für den Garmin-Abgleich: [`supabase/migrations/20261120000200_garmin.sql`](../supabase/migrations/20261120000200_garmin.sql).
+7. Rechte für Claude-Anbindung und Garmin: [`supabase/migrations/20261120000300_service_role_grants.sql`](../supabase/migrations/20261120000300_service_role_grants.sql).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 
