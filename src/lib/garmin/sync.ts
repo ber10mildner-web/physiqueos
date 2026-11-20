@@ -12,6 +12,8 @@ export interface SyncResult {
   days: number;
   activities: number;
   error?: string;
+  /** Diagnostic hint when Garmin returned no health values at all. */
+  note?: string;
 }
 
 /**
@@ -55,11 +57,18 @@ export async function syncUser(admin: SupabaseClient, userId: string, days = 3):
     const today = todayIn(row.time_zone);
     let written = 0;
     let writeError: string | null = null;
+    const diag = new Set<string>();
     for (let i = 0; i < days; i++) {
       const date = addDays(today, -i);
       const day = await getDay(tokens, displayName, date);
       const values = mapHealth(day.sleep, day.hrv, day.summary);
-      if (Object.keys(values).length === 0) continue;
+      day.errors.forEach((e) => diag.add(e));
+      if (Object.keys(values).length === 0) {
+        // Describe what Garmin actually sent, without any values (field names only).
+        const shape = (v: unknown) => (v && typeof v === "object" ? Object.keys(v as object).slice(0, 8).join(",") || "leer" : String(v));
+        diag.add(`${date}: sleep{${shape(day.sleep)}} hrv{${shape(day.hrv)}} summary{${shape(day.summary)}}`);
+        continue;
+      }
       const res = await upsertHealth({ date, ...values, source: "garmin" }, ctx);
       if (res.ok) written++;
       else writeError ??= res.error;
@@ -79,7 +88,8 @@ export async function syncUser(admin: SupabaseClient, userId: string, days = 3):
       .from("garmin_connections")
       .update({ status: "ok", last_error: null, last_sync_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("user_id", userId);
-    return { ok: true, days: written, activities: acts };
+    const note = written === 0 && diag.size ? [...diag].slice(0, 4).join(" | ").slice(0, 600) : undefined;
+    return { ok: true, days: written, activities: acts, note };
   } catch (e) {
     const msg = e instanceof GarminError ? (e.auth ? `${e.message}. Bitte neu verbinden.` : e.message) : e instanceof Error ? e.message : "Unbekannter Fehler";
     return fail(msg);

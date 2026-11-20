@@ -28,7 +28,7 @@ export function GarminConnectForm() {
           const res = await connectGarmin(value);
           if (res.ok) {
             setValue("");
-            setMsg({ tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) });
+            setMsg({ tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) + (res.sync.note ? ` Details: ${res.sync.note}` : "") });
             router.refresh();
           } else setMsg({ tone: "error", text: errorText(t, res.error) });
         });
@@ -84,7 +84,11 @@ export function GarminStatus({ conn }: { conn: { display_name: string | null; st
             start(async () => {
               setMsg(null);
               const res = await syncGarminNow();
-              setMsg(res.ok ? { tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) } : { tone: "error", text: errorText(t, res.error) });
+              setMsg(
+                res.ok
+                  ? { tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) + (res.sync.note ? ` Details: ${res.sync.note}` : "") }
+                  : { tone: "error", text: errorText(t, res.error) },
+              );
               router.refresh();
             })
           }

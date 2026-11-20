@@ -78,17 +78,19 @@ export async function getDisplayName(tokens: GarminTokens): Promise<string> {
 export async function getDay(tokens: GarminTokens, displayName: string, date: string) {
   const dn = encodeURIComponent(displayName);
   // Each call is independent; one missing dataset should not lose the others.
-  const safe = (p: Promise<unknown>) =>
+  const errors: string[] = [];
+  const safe = (name: string, p: Promise<unknown>) =>
     p.catch((e) => {
       if (e instanceof GarminError && e.auth) throw e;
+      errors.push(`${name}: ${e instanceof Error ? e.message : "?"}`);
       return null;
     });
   const [sleep, hrv, summary] = await Promise.all([
-    safe(garminGet(tokens, `/wellness-service/wellness/dailySleepData/${dn}`, { date, nonSleepBufferMinutes: "60" })),
-    safe(garminGet(tokens, `/hrv-service/hrv/${date}`)),
-    safe(garminGet(tokens, `/usersummary-service/usersummary/daily/${dn}`, { calendarDate: date })),
+    safe("sleep", garminGet(tokens, `/wellness-service/wellness/dailySleepData/${dn}`, { date, nonSleepBufferMinutes: "60" })),
+    safe("hrv", garminGet(tokens, `/hrv-service/hrv/${date}`)),
+    safe("summary", garminGet(tokens, `/usersummary-service/usersummary/daily/${dn}`, { calendarDate: date })),
   ]);
-  return { sleep, hrv, summary };
+  return { sleep, hrv, summary, errors };
 }
 
 export async function getActivities(tokens: GarminTokens, from: string, to: string): Promise<unknown[]> {
