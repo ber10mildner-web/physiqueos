@@ -580,7 +580,7 @@ const en: Dictionary = {
     skinShort: "Skin: {value}",
     privacy: "Only visible to you. Sigma gives no medical advice; always discuss medication with your doctor.",
     nutrients: "Nutrients per dose (optional)",
-    nutrientsHint: "E.g. omega 3: 1 capsule ≈ 9 kcal, 1 g fat. If filled in, each intake counts towards your daily nutrition (under snack).",
+    nutrientsHint: "E.g. omega 3: 1 capsule ≈ 9 kcal, 1 g fat. If filled in, each intake counts towards your daily nutrition (under snack), including intakes from the last 7 days.",
     doseG: "Weight of one dose (g)",
     moreNutrients: "Vitamins & minerals",
     daily: "Automatically on",

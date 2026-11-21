@@ -4,6 +4,7 @@ import { z } from "zod";
 import { check, ctxOr, num, type Ctx } from "./core";
 import { NUTRIENT_KEYS, sanitizeNutrients, type NutrientMap } from "@/lib/nutrition/nutrients";
 import { dateSchema, type Result } from "./mutations";
+import { addDays } from "@/lib/dates";
 import { MEDICATION_KINDS, SKIN_AREAS, type Medication, type MedicationLog, type SkinLog } from "./types";
 
 const uuid = z.string().uuid();
@@ -105,6 +106,14 @@ export async function saveMedication(input: z.input<typeof medicationSchema>, ct
   if (id) {
     const { data, error } = await supabase.from("medications").update(row).eq("id", id).eq("user_id", userId).select("id").maybeSingle();
     if (error || !data) return { ok: false, error: error?.message ?? "not_found" };
+    // values added or changed later also count for intakes already ticked off this week
+    if (today) {
+      const med = await getMedication(id, { supabase, userId });
+      if (med) {
+        const synced = await syncRecentIntakes(med, today, { supabase, userId });
+        if (!synced.ok) return synced;
+      }
+    }
     return { ok: true, id };
   }
   const { count } = await supabase.from("medications").select("id", { count: "exact", head: true }).eq("user_id", userId);
@@ -175,6 +184,49 @@ export async function recordIntake(med: Medication, date: string, source: "manua
     medication_log_id: log.id,
   });
   return de ? { ok: false, error: de.message } : { ok: true };
+}
+
+/** Days back (today included) whose intakes follow edited supplement values. */
+export const INTAKE_SYNC_DAYS = 7;
+
+/**
+ * Rewrites the diary entries of a supplement's intakes from the last week so they
+ * match its current nutrients: creates missing ones (ticked off before values were
+ * entered), updates changed ones, removes them if the nutrients were cleared.
+ */
+export async function syncRecentIntakes(med: Medication, today: string, ctx: Ctx): Promise<Result> {
+  const { supabase, userId } = ctx;
+  const from = addDays(today, -(INTAKE_SYNC_DAYS - 1));
+  const { data: logs, error } = await supabase
+    .from("medication_logs")
+    .select("id, entry_date, dose")
+    .eq("user_id", userId)
+    .eq("medication_id", med.id)
+    .gte("entry_date", from)
+    .lte("entry_date", today);
+  if (error) return { ok: false, error: error.message };
+  if (!logs?.length) return { ok: true };
+  const ids = logs.map((l) => l.id as string);
+  const { error: de } = await supabase.from("diary_entries").delete().eq("user_id", userId).in("medication_log_id", ids);
+  if (de) return { ok: false, error: de.message };
+  if (!med.nutrients) return { ok: true };
+  const { per100g, amount_g } = supplementDiaryValues(med.nutrients, med.dose_g);
+  const { error: ie } = await supabase.from("diary_entries").insert(
+    logs.map((l) => ({
+      user_id: userId,
+      entry_date: l.entry_date,
+      meal: "snack",
+      food_id: null,
+      food_name: med.name,
+      food_brand: med.dose,
+      source: "custom",
+      source_id: null,
+      nutrients_per_100g: per100g,
+      amount_g,
+      medication_log_id: l.id,
+    })),
+  );
+  return ie ? { ok: false, error: ie.message } : { ok: true };
 }
 
 async function getMedication(id: string, ctx: Ctx): Promise<Medication | null> {
