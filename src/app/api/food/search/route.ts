@@ -3,10 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { searchMyFoods } from "@/lib/data";
 import { searchOff } from "@/lib/food-sources/openfoodfacts";
 import { searchUsda } from "@/lib/food-sources/usda";
+import { searchBasic } from "@/lib/food-sources/basic";
 import type { FoodCandidate, FoodSource } from "@/lib/food-sources/types";
 import { getLocale } from "@/lib/i18n/server";
 
-/** Searches the user's library, Open Food Facts and USDA in parallel. Each source fails independently. */
+/**
+ * Searches the user's library, the bundled basic foods (offline), Open Food Facts and USDA.
+ * External sources run in parallel and fail independently.
+ */
 export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 100);
   if (q.length < 2) return NextResponse.json({ error: "query_too_short" }, { status: 400 });
@@ -24,8 +28,13 @@ export async function GET(req: NextRequest) {
     unavailable.push(s);
     return [];
   };
+  const mineList = val(mine, "custom");
+  // Basic foods already in the library show up under "mine" (with favourite star etc.).
+  const owned = new Set(mineList.map((f) => `${f.source}:${f.source_id}`));
+  const basic = searchBasic(q, locale).filter((f) => !owned.has(`${f.source}:${f.source_id}`));
   return NextResponse.json({
-    mine: val(mine, "custom"),
+    mine: mineList,
+    basic,
     openfoodfacts: val(off, "openfoodfacts"),
     usda: val(usda, "usda"),
     unavailable,

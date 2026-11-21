@@ -22,6 +22,7 @@ import { CARDIO_ACTIVITIES, SKIN_AREAS } from "@/lib/data/types";
 import { periodSummary } from "@/lib/summary";
 import { fetchOffProduct, searchOff } from "@/lib/food-sources/openfoodfacts";
 import { searchUsda } from "@/lib/food-sources/usda";
+import { getBasicFood, isBasicSourceId, searchBasic } from "@/lib/food-sources/basic";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import { BARCODE_RE } from "@/lib/food-sources/types";
 import { NUTRIENT_KEYS, NUTRIENTS, sanitizeNutrients } from "@/lib/nutrition/nutrients";
@@ -35,7 +36,7 @@ A nutrient missing from a food means "unknown", never zero. Totals report how ma
 
 NEVER invent nutritional values. Use values from search_foods / lookup_barcode results, from the user's own library, or values the user gave you (e.g. a photographed nutrition label). If a food cannot be found, ask the user for the label values.
 
-Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then Open Food Facts for branded products, then USDA for generic foods), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
+Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then "basic" for whole/unprocessed foods like fruit, vegetables, rice or eggs, then Open Food Facts for branded products, then USDA for anything else), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
 
 Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10), skin log and medication intake. Be concrete and honest about missing data.
 
@@ -86,6 +87,9 @@ async function resolveFood(ref: FoodRef, ctx: Ctx): Promise<FoodCandidate | stri
     return (await fetchOffProduct(ref.barcode)) ?? `barcode ${ref.barcode} not found in Open Food Facts`;
   }
   if (ref.source === "openfoodfacts" && ref.source_id) return (await fetchOffProduct(ref.source_id)) ?? `Open Food Facts product ${ref.source_id} not found`;
+  if (ref.source === "usda" && ref.source_id && isBasicSourceId(ref.source_id)) {
+    return getBasicFood(ref.source_id) ?? `basic food ${ref.source_id} not found`;
+  }
   if (ref.source === "usda" && ref.source_id) {
     const hits = await searchUsda(ref.source_id, 5);
     return hits.find((h) => h.source_id === ref.source_id) ?? `USDA food ${ref.source_id} not found – pass the food via search_foods result instead`;
@@ -182,8 +186,8 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
 
   tool(
     "search_foods",
-    "Search the user's library, Open Food Facts (branded products, German names) and USDA (generic foods, English names, detailed micronutrients). Values per 100 g.",
-    z.object({ query: z.string().min(2).max(100), sources: z.array(z.enum(["mine", "openfoodfacts", "usda"])).optional() }),
+    "Search the user's library, Sigma's basic foods (whole/unprocessed foods with German names, USDA SR28 values incl. fibre and vitamins; source \"usda\", source_id \"sr28-…\"), Open Food Facts (branded products, German names) and USDA (generic foods, English names, detailed micronutrients). Values per 100 g.",
+    z.object({ query: z.string().min(2).max(100), sources: z.array(z.enum(["mine", "basic", "openfoodfacts", "usda"])).optional() }),
     async ({ query, sources }: { query: string; sources?: string[] }) => {
       const want = (s: string) => !sources || sources.includes(s);
       const [mine, off, usda] = await Promise.allSettled([
@@ -192,7 +196,8 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
         want("usda") ? searchUsda(query, 6) : Promise.resolve([]),
       ]);
       const v = (r: PromiseSettledResult<FoodCandidate[]>) => (r.status === "fulfilled" ? r.value.map(compactFood) : `unavailable: ${(r.reason as Error)?.message}`);
-      return json({ mine: v(mine), openfoodfacts: v(off), usda: v(usda) });
+      const basic = want("basic") ? searchBasic(query, "de", 6).map(compactFood) : [];
+      return json({ mine: v(mine), basic, openfoodfacts: v(off), usda: v(usda) });
     },
   );
 

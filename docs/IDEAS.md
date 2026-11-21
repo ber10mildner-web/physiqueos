@@ -20,6 +20,8 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Tageszitat
 - [x] Kalorienziel pro Wochentag (z. B. Cardio-Tage Di/Do mehr)
 - [x] Claude-Auswertung aus der App heraus (öffnet die Claude-App, kostenlos über den Konnektor)
+- [x] Grundnahrungsmittel in der Suche (Apfel, Kiwi, Zwiebel, Reis …): ca. 260 Lebensmittel mit deutschen Namen, Ballaststoffen und Vitaminen, erscheinen vor Open Food Facts (2026-11-21)
+- [ ] Grundnahrungsmittel erweitern: fehlende Lebensmittel einfach melden (z. B. Quark, Skyr, Brotsorten sind Markenprodukte und kommen weiter über Open Food Facts)
 
 ## Ideen von Claude
 

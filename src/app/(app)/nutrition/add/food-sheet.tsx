@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { ExternalLink, Star, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
-import type { FoodCandidate } from "@/lib/food-sources/types";
+import { isBasicSourceId, type FoodCandidate } from "@/lib/food-sources/types";
 import type { MealSlot } from "@/lib/data/types";
 import { hasRequiredNutrients, MICRO_NUTRIENTS, PRIMARY_NUTRIENTS } from "@/lib/nutrition/nutrients";
 import { scaleNutrients } from "@/lib/nutrition/calc";
@@ -57,11 +57,13 @@ export function FoodSheet({
   const attribution =
     food.source === "openfoodfacts"
       ? t.addFood.attributionOff
-      : food.source === "usda"
-        ? t.addFood.attributionUsda
-        : food.source === "recipe"
-          ? t.recipes.attribution
-          : t.addFood.attributionCustom;
+      : isBasicSourceId(food.source_id)
+        ? t.addFood.attributionBasic
+        : food.source === "usda"
+          ? t.addFood.attributionUsda
+          : food.source === "recipe"
+            ? t.recipes.attribution
+            : t.addFood.attributionCustom;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
