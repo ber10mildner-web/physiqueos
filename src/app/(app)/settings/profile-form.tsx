@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import type { Profile } from "@/lib/data/types";
 import { Button, Field, Input, Notice, Select } from "@/components/ui";
@@ -8,7 +7,6 @@ import { saveProfile } from "./actions";
 
 export function ProfileForm({ profile }: { profile: Profile | null }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
 
@@ -19,7 +17,6 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
         start(async () => {
           const res = await saveProfile(fd);
           setStatus(res.ok ? "saved" : "error");
-          if (res.ok) router.refresh();
         })
       }
     >

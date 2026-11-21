@@ -1,13 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { Button, Field, Input, Notice } from "@/components/ui";
 import { saveWeight } from "./actions";
 
 export function WeightForm({ today, defaultWeight }: { today: string; defaultWeight: number | null }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   return (
@@ -17,7 +15,6 @@ export function WeightForm({ today, defaultWeight }: { today: string; defaultWei
         start(async () => {
           const res = await saveWeight(fd);
           setStatus(res.ok ? "saved" : "error");
-          if (res.ok) router.refresh();
         })
       }
     >

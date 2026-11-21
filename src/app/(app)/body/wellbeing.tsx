@@ -1,18 +1,18 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Check, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
 import { MEDICATION_KINDS, SKIN_AREAS, type Medication, type MedicationLog, type SkinArea, type SkinLog } from "@/lib/data/types";
 import { Button, EmptyState, Field, Input, Notice, Select, cx } from "@/components/ui";
-import { addMedicationAction, archiveMedicationAction, saveSkin, setMedicationTakenAction } from "./actions";
+import { archiveMedicationAction, saveMedicationAction, saveSkin, setMedicationTakenAction } from "./actions";
+import { WeekdayPicker, weekdayLabel } from "@/components/weekday-picker";
+import { MICRO_NUTRIENTS, NUTRIENTS, type NutrientKey } from "@/lib/nutrition/nutrients";
 
 const SKIN_COLORS = ["bg-fiber/15 text-fiber", "bg-fiber/10 text-fiber", "bg-warn/15 text-warn", "bg-carbs/15 text-carbs", "bg-danger/15 text-danger"];
 
 export function SkinForm({ today, entry }: { today: string; entry: SkinLog | null }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [score, setScore] = useState<number | null>(entry?.score ?? null);
   const [areas, setAreas] = useState<SkinArea[]>(entry?.areas ?? []);
   const [note, setNote] = useState(entry?.note ?? "");
@@ -24,7 +24,6 @@ export function SkinForm({ today, entry }: { today: string; entry: SkinLog | nul
     start(async () => {
       const res = await saveSkin({ date: today, score: next.score!, areas: next.areas, note: next.note.trim() || null });
       setStatus(res.ok ? "saved" : "error");
-      if (res.ok) router.refresh();
     });
   };
 
@@ -88,7 +87,6 @@ export function SkinForm({ today, entry }: { today: string; entry: SkinLog | nul
 
 export function MedicationChecklist({ today, medications, taken }: { today: string; medications: Medication[]; taken: string[] }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [done, setDone] = useState(new Set(taken));
   const [pending, start] = useTransition();
   if (!medications.length) return <p className="text-sm text-muted">{t.wellbeing.noMeds}</p>;
@@ -110,7 +108,6 @@ export function MedicationChecklist({ today, medications, taken }: { today: stri
                 start(async () => {
                   const res = await setMedicationTakenAction({ medicationId: m.id, date: today, taken: !on });
                   if (!res.ok) setDone(done);
-                  router.refresh();
                 });
               }}
               className={cx("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left", on ? "bg-accent/10" : "bg-surface-2")}
@@ -133,74 +130,173 @@ export function MedicationChecklist({ today, medications, taken }: { today: stri
 
 export function MedicationManager({ medications }: { medications: Medication[] }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
-  const [error, setError] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   return (
     <div className="space-y-3">
       {medications.length > 0 && (
         <ul className="divide-y divide-line">
-          {medications.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 py-2">
-              <span className="flex-1 text-sm">
-                {m.name}
-                {m.dose && <span className="text-muted"> · {m.dose}</span>}
-              </span>
-              <button
-                type="button"
-                aria-label={t.wellbeing.remove}
-                disabled={pending}
-                className="grid size-8 place-items-center rounded-lg text-faint hover:text-danger"
-                onClick={() =>
-                  start(async () => {
-                    await archiveMedicationAction(m.id);
-                    router.refresh();
-                  })
-                }
-              >
-                <X className="size-4" />
-              </button>
-            </li>
-          ))}
+          {medications.map((m) =>
+            editing === m.id ? (
+              <li key={m.id} className="py-2">
+                <MedicationEditor medication={m} onDone={() => setEditing(null)} />
+              </li>
+            ) : (
+              <li key={m.id} className="flex items-center gap-2 py-2">
+                <span className="min-w-0 flex-1 text-sm">
+                  {m.name}
+                  {m.dose && <span className="text-muted"> · {m.dose}</span>}
+                  {(m.nutrients || m.auto_days.length > 0) && (
+                    <span className="block text-xs text-faint">
+                      {[m.nutrients && t.wellbeing.countsInDiary, m.auto_days.length > 0 && `${t.wellbeing.auto}: ${weekdayLabel(m.auto_days, t)}`].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </span>
+                <button type="button" aria-label={t.wellbeing.edit} className="grid size-8 place-items-center rounded-lg text-muted" onClick={() => setEditing(m.id)}>
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t.wellbeing.remove}
+                  disabled={pending}
+                  className="grid size-8 place-items-center rounded-lg text-faint hover:text-danger"
+                  onClick={() =>
+                    start(async () => {
+                      await archiveMedicationAction(m.id);
+                    })
+                  }
+                >
+                  <X className="size-4" />
+                </button>
+              </li>
+            ),
+          )}
         </ul>
       )}
-      <form
-        className="space-y-3"
-        action={(fd) =>
-          start(async () => {
-            setError(false);
-            const res = await addMedicationAction({
-              name: String(fd.get("name") ?? ""),
-              dose: String(fd.get("dose") ?? "").trim() || null,
-              kind: String(fd.get("kind") ?? "medication"),
-            });
-            if (!res.ok) return setError(true);
-            router.refresh();
-          })
-        }
-      >
-        <Field label={t.wellbeing.medName}>
-          <Input name="name" required maxLength={100} placeholder={t.wellbeing.medNamePlaceholder} />
+      {editing === null && <MedicationEditor key={medications.length} medication={null} onDone={() => undefined} />}
+    </div>
+  );
+}
+
+const MAIN_NUTRIENTS: NutrientKey[] = ["energy_kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"];
+
+const parseNum = (s: string) => {
+  const v = s.trim().replace(",", ".");
+  return v === "" ? null : Number(v);
+};
+
+/** Add or edit a medication / supplement, optionally with nutrients per dose and automatic days. */
+function MedicationEditor({ medication, onDone }: { medication: Medication | null; onDone: () => void }) {
+  const { t } = useI18n();
+  const [name, setName] = useState(medication?.name ?? "");
+  const [dose, setDose] = useState(medication?.dose ?? "");
+  const [kind, setKind] = useState<string>(medication?.kind ?? "supplement");
+  const [doseG, setDoseG] = useState(medication?.dose_g != null ? String(medication.dose_g) : "");
+  const [values, setValues] = useState<Partial<Record<NutrientKey, string>>>(
+    Object.fromEntries(Object.entries(medication?.nutrients ?? {}).map(([k, v]) => [k, String(v)])),
+  );
+  const [days, setDays] = useState<number[]>(medication?.auto_days ?? []);
+  const [error, setError] = useState(false);
+  const [pending, start] = useTransition();
+  const hasMicros = MICRO_NUTRIENTS.some((k) => values[k]);
+
+  const nutrientInput = (k: NutrientKey) => (
+    <Field key={k} label={`${t.nutrients[k]} (${NUTRIENTS[k].unit})`}>
+      <Input
+        value={values[k] ?? ""}
+        onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="any"
+        className="num"
+      />
+    </Field>
+  );
+
+  const save = () =>
+    start(async () => {
+      setError(false);
+      const nutrients: Record<string, number> = {};
+      for (const [k, raw] of Object.entries(values)) {
+        const n = parseNum(raw ?? "");
+        if (n === null) continue;
+        if (!Number.isFinite(n) || n < 0) return setError(true);
+        nutrients[k] = n;
+      }
+      const g = parseNum(doseG);
+      if (g !== null && !(g > 0)) return setError(true);
+      const res = await saveMedicationAction({
+        id: medication?.id,
+        name,
+        dose: dose.trim() || null,
+        kind,
+        nutrients: Object.keys(nutrients).length ? nutrients : null,
+        dose_g: g,
+        auto_days: days,
+      });
+      if (!res.ok) return setError(true);
+      if (!medication) {
+        setName("");
+        setDose("");
+        setDoseG("");
+        setValues({});
+        setDays([]);
+      }
+      onDone();
+    });
+
+  return (
+    <div className={cx("space-y-3", medication && "rounded-2xl border border-line p-3")}>
+      <Field label={t.wellbeing.medName}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} placeholder={t.wellbeing.medNamePlaceholder} />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t.wellbeing.medDose}>
+          <Input value={dose} onChange={(e) => setDose(e.target.value)} maxLength={100} placeholder={t.wellbeing.medDosePlaceholder} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t.wellbeing.medDose}>
-            <Input name="dose" maxLength={100} placeholder={t.wellbeing.medDosePlaceholder} />
-          </Field>
-          <Field label={t.wellbeing.kind}>
-            <Select name="kind" defaultValue="medication">
-              {MEDICATION_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {t.wellbeing.kinds[k]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        {error && <Notice tone="error">{t.errors.invalidInput}</Notice>}
-        <Button type="submit" variant="secondary" className="w-full" disabled={pending}>
-          {t.wellbeing.addMed}
+        <Field label={t.wellbeing.kind}>
+          <Select value={kind} onChange={(e) => setKind(e.target.value)}>
+            {MEDICATION_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {t.wellbeing.kinds[k]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      {kind === "supplement" && (
+        <details className="group rounded-2xl bg-surface-2/60 p-3" open={Boolean(medication?.nutrients)}>
+          <summary className="cursor-pointer list-none text-sm font-medium">{t.wellbeing.nutrients}</summary>
+          <p className="mt-1 text-xs text-faint">{t.wellbeing.nutrientsHint}</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {MAIN_NUTRIENTS.map(nutrientInput)}
+            <Field label={t.wellbeing.doseG}>
+              <Input value={doseG} onChange={(e) => setDoseG(e.target.value)} type="number" inputMode="decimal" min={0} step="any" placeholder="1" className="num" />
+            </Field>
+          </div>
+          <details className="mt-3" open={hasMicros}>
+            <summary className="cursor-pointer list-none text-sm text-muted">+ {t.wellbeing.moreNutrients}</summary>
+            <div className="mt-3 grid grid-cols-2 gap-3">{MICRO_NUTRIENTS.map(nutrientInput)}</div>
+          </details>
+        </details>
+      )}
+      <div>
+        <div className="mb-1 text-[13px] text-muted">{t.wellbeing.daily}</div>
+        <WeekdayPicker value={days} onChange={setDays} />
+        <p className="mt-1 text-xs text-faint">{t.wellbeing.dailyHint}</p>
+      </div>
+      {error && <Notice tone="error">{t.errors.invalidInput}</Notice>}
+      <div className={cx("grid gap-2", medication ? "grid-cols-2" : "grid-cols-1")}>
+        {medication && (
+          <Button type="button" variant="ghost" disabled={pending} onClick={onDone}>
+            {t.common.cancel}
+          </Button>
+        )}
+        <Button type="button" variant={medication ? "primary" : "secondary"} disabled={pending || !name.trim()} onClick={save}>
+          {pending ? t.common.saving : medication ? t.wellbeing.save : t.wellbeing.addMed}
         </Button>
-      </form>
+      </div>
     </div>
   );
 }

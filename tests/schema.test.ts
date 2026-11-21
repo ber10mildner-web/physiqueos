@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -190,5 +190,57 @@ describe("schema", () => {
     await expect(as(A, () => db.exec(`update public.cardio_sessions set feeling = 11 where id = '${c.rows[0].id}'`))).rejects.toThrow(/check constraint/);
     await expect(as(A, () => db.exec(`update public.cardio_sessions set machine_photo_path = '../x.jpg' where id = '${c.rows[0].id}'`))).rejects.toThrow(/check constraint/);
     await as(A, () => db.exec(`update public.cardio_sessions set machine_photo_path = '${A}/cardio/${B}.jpg', machine_level = 8, machine_floors = 120 where id = '${c.rows[0].id}'`));
+  });
+
+  it("keeps routines private and only links a user's own templates, supplement logs and workouts", async () => {
+    const t = await as(A, () =>
+      db.query<{ id: string }>(
+        `insert into public.cardio_templates (user_id, name, activity, duration_min, incline_pct, speed_kmh, effort, auto_days) values ('${A}', 'Incline Walk', 'walk', 30, 6, 5, 6, '{6,7,1}') returning id`,
+      ),
+    );
+    await expect(as(A, () => db.exec(`insert into public.cardio_templates (user_id, name, activity, duration_min, auto_days) values ('${A}', 'x', 'walk', 30, '{8}')`))).rejects.toThrow(/check constraint/);
+    await as(A, () => db.exec(`insert into public.cardio_sessions (user_id, session_date, activity, duration_min, template_id, incline_pct, speed_kmh) values ('${A}', '2026-11-21', 'walk', 30, '${t.rows[0].id}', 6, 5)`));
+    await expect(
+      as(B, () => db.exec(`insert into public.cardio_sessions (user_id, session_date, activity, duration_min, template_id) values ('${B}', '2026-11-21', 'walk', 30, '${t.rows[0].id}')`)),
+    ).rejects.toThrow(/row-level security/);
+
+    // supplement intake with a linked diary entry; removing the intake removes the entry
+    const m = await as(A, () => db.query<{ id: string }>(`insert into public.medications (user_id, name, kind, nutrients, dose_g, auto_days) values ('${A}', 'Omega 3', 'supplement', '{"energy_kcal": 9, "fat_g": 1}', 1, '{1,2,3,4,5,6,7}') returning id`));
+    const log = await as(A, () => db.query<{ id: string }>(`insert into public.medication_logs (user_id, medication_id, name, entry_date) values ('${A}', '${m.rows[0].id}', 'Omega 3', '2026-11-21') returning id`));
+    await as(A, () =>
+      db.exec(
+        `insert into public.diary_entries (user_id, entry_date, meal, food_name, source, nutrients_per_100g, amount_g, medication_log_id) values ('${A}', '2026-11-21', 'snack', 'Omega 3', 'custom', '{"energy_kcal": 900, "fat_g": 100}', 1, '${log.rows[0].id}')`,
+      ),
+    );
+    await expect(
+      as(B, () =>
+        db.exec(
+          `insert into public.diary_entries (user_id, entry_date, meal, food_name, source, nutrients_per_100g, amount_g, medication_log_id) values ('${B}', '2026-11-21', 'snack', 'x', 'custom', '{}', 1, '${log.rows[0].id}')`,
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/);
+    await as(A, () => db.exec(`delete from public.medication_logs where id = '${log.rows[0].id}'`));
+    const left = await as(A, () => db.query(`select * from public.diary_entries where medication_log_id is not null`));
+    expect(left.rows).toHaveLength(0);
+
+    // a routine run is recorded once per day
+    await as(A, () => db.exec(`insert into public.routine_runs (user_id, kind, ref_id, run_date) values ('${A}', 'cardio', '${t.rows[0].id}', '2026-11-21') on conflict do nothing`));
+    const again = await as(A, () =>
+      db.query(`insert into public.routine_runs (user_id, kind, ref_id, run_date) values ('${A}', 'cardio', '${t.rows[0].id}', '2026-11-21') on conflict do nothing returning ref_id`),
+    );
+    expect(again.rows).toHaveLength(0);
+
+    // exercise feelings only on the user's own workouts
+    const w = await as(A, () => db.query<{ id: string }>(`insert into public.workouts (user_id, name, workout_date) values ('${A}', 'Push', '2026-11-21') returning id`));
+    const ex = await db.query<{ id: string }>(`select id from public.exercises where user_id is null limit 1`);
+    await as(A, () => db.exec(`insert into public.workout_exercise_notes (workout_id, exercise_id, user_id, feeling, note) values ('${w.rows[0].id}', '${ex.rows[0].id}', '${A}', 8, 'gut')`));
+    await expect(
+      as(B, () => db.exec(`insert into public.workout_exercise_notes (workout_id, exercise_id, user_id, feeling) values ('${w.rows[0].id}', '${ex.rows[0].id}', '${B}', 3)`)),
+    ).rejects.toThrow(/row-level security/);
+
+    for (const table of ["cardio_templates", "routine_runs", "workout_exercise_notes"]) {
+      const seen = await as(B, () => db.query(`select * from public.${table}`));
+      expect(seen.rows, table).toHaveLength(0);
+    }
   });
 });

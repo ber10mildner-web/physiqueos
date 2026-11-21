@@ -1,9 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { getToday, requireUser } from "@/lib/auth";
 import { upsertWeight } from "@/lib/data/mutations";
 import { upsertHealth } from "@/lib/data/health";
-import { addMedication, archiveMedication, setMedicationTaken, upsertSkin } from "@/lib/data/wellbeing";
+import { archiveMedication, saveMedication, setMedicationTaken, upsertSkin } from "@/lib/data/wellbeing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -54,13 +54,22 @@ export async function saveSkin(input: { date: string; score: number; areas: stri
 
 export async function setMedicationTakenAction(input: { medicationId: string; date: string; taken: boolean }): Promise<ActionResult> {
   const res = await setMedicationTaken(input, await requireUser());
-  if (res.ok) revalidatePath("/body");
+  if (res.ok) revalidatePath("/", "layout");
   return res;
 }
 
-export async function addMedicationAction(input: { name: string; dose: string | null; kind: string }): Promise<ActionResult> {
-  const res = await addMedication(input as Parameters<typeof addMedication>[0], await requireUser());
-  if (res.ok) revalidatePath("/body");
+export async function saveMedicationAction(input: {
+  id?: string;
+  name: string;
+  dose: string | null;
+  kind: string;
+  nutrients: Record<string, number> | null;
+  dose_g: number | null;
+  auto_days: number[];
+}): Promise<ActionResult> {
+  const res = await saveMedication({ ...(input as Parameters<typeof saveMedication>[0]), today: await getToday() }, await requireUser());
+  // supplements with nutrients change the diary too
+  if (res.ok) revalidatePath("/", "layout");
   return res.ok ? { ok: true } : res;
 }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ensureRoutines } from "@/lib/data/routines";
 import { ChevronLeft, ChevronRight, Plus, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n";
@@ -22,6 +23,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const today = await getToday();
   const sp = await searchParams;
   const date = isIsoDate(sp.date) ? sp.date : today;
+  await ensureRoutines(today);
   const [entries, goal, water, profile] = await Promise.all([getDiary(date), getGoalOn(date), getWater(date), getProfile()]);
   const totals = sumItems(entries);
   const label =

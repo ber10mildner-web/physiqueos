@@ -1,7 +1,8 @@
 import "server-only";
 /** Skin log (one entry per day) and medications / supplements with intake log. */
 import { z } from "zod";
-import { check, ctxOr, type Ctx } from "./core";
+import { check, ctxOr, num, type Ctx } from "./core";
+import { NUTRIENT_KEYS, sanitizeNutrients, type NutrientMap } from "@/lib/nutrition/nutrients";
 import { dateSchema, type Result } from "./mutations";
 import { MEDICATION_KINDS, SKIN_AREAS, type Medication, type MedicationLog, type SkinLog } from "./types";
 
@@ -46,37 +47,77 @@ export async function deleteSkin(date: string, ctx?: Ctx): Promise<Result> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+const MED_COLUMNS = "id, name, dose, kind, position, nutrients, dose_g, auto_days, auto_from";
+
+function mapMedication(r: Record<string, unknown>): Medication {
+  const n = r.nutrients ? sanitizeNutrients(r.nutrients) : null;
+  return {
+    ...(r as unknown as Medication),
+    nutrients: n && Object.keys(n).length ? n : null,
+    dose_g: num(r.dose_g),
+    auto_days: ((r.auto_days as number[] | null) ?? []).map(Number),
+  };
+}
+
 export async function listMedications(ctx?: Ctx): Promise<Medication[]> {
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("medications")
-    .select("id, name, dose, kind, position")
+    .select(MED_COLUMNS)
     .eq("user_id", userId)
     .eq("archived", false)
     .order("position")
     .order("created_at");
   check(error, !ctx);
-  return (data ?? []) as Medication[];
+  return (data ?? []).map(mapMedication);
 }
 
+const nutrientValue = z.number().min(0).max(100000);
 const medicationSchema = z.object({
+  id: uuid.optional(),
   name: z.string().trim().min(1).max(100),
   dose: z.string().trim().max(100).nullish(),
   kind: z.enum(MEDICATION_KINDS).default("medication"),
+  /** Nutrients of one dose. */
+  nutrients: z.partialRecord(z.enum(NUTRIENT_KEYS), nutrientValue).nullish(),
+  dose_g: z.number().positive().max(1000).nullish(),
+  auto_days: z.array(z.number().int().min(1).max(7)).max(7).default([]),
+  /** Today in the user's time zone: automatic intake starts from here. */
+  today: dateSchema.optional(),
 });
 
-export async function addMedication(input: z.input<typeof medicationSchema>, ctx?: Ctx): Promise<Result<{ id: string }>> {
+/** Adds a medication / supplement, or updates it when an id is given. */
+export async function saveMedication(input: z.input<typeof medicationSchema>, ctx?: Ctx): Promise<Result<{ id: string }>> {
   const parsed = medicationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const { supabase, userId } = await ctxOr(ctx);
+  const { id, today, ...d } = parsed.data;
+  const nutrients = d.nutrients ? sanitizeNutrients(d.nutrients) : null;
+  const row = {
+    name: d.name,
+    dose: d.dose || null,
+    kind: d.kind,
+    nutrients: nutrients && Object.keys(nutrients).length ? nutrients : null,
+    dose_g: d.dose_g ?? null,
+    auto_days: [...new Set(d.auto_days)].sort(),
+    ...(today ? { auto_from: today } : {}),
+  };
+  if (id) {
+    const { data, error } = await supabase.from("medications").update(row).eq("id", id).eq("user_id", userId).select("id").maybeSingle();
+    if (error || !data) return { ok: false, error: error?.message ?? "not_found" };
+    return { ok: true, id };
+  }
   const { count } = await supabase.from("medications").select("id", { count: "exact", head: true }).eq("user_id", userId);
   const { data, error } = await supabase
     .from("medications")
-    .insert({ ...parsed.data, dose: parsed.data.dose || null, user_id: userId, position: count ?? 0 })
+    .insert({ ...row, user_id: userId, position: count ?? 0 })
     .select("id")
     .single();
   return error ? { ok: false, error: error.message } : { ok: true, id: data.id };
 }
+
+/** Kept for callers that only add (name, dose, kind). */
+export const addMedication = (input: { name: string; dose?: string | null; kind?: Medication["kind"] }, ctx?: Ctx) => saveMedication(input, ctx);
 
 /** Removes a medication from the list; its intake history stays. */
 export async function archiveMedication(id: string, ctx?: Ctx): Promise<Result> {
@@ -98,27 +139,71 @@ export async function getMedicationLogs(from: string, to: string, ctx?: Ctx): Pr
   return (data ?? []) as MedicationLog[];
 }
 
+/** Diary values for one dose: per 100 g plus the amount, so totals come out right. */
+export function supplementDiaryValues(nutrients: NutrientMap, doseG: number | null): { per100g: NutrientMap; amount_g: number } {
+  const amount = doseG && doseG > 0 ? doseG : 1;
+  const per100g: NutrientMap = {};
+  for (const [k, v] of Object.entries(nutrients) as [keyof NutrientMap, number][]) per100g[k] = Math.round(((v * 100) / amount) * 10000) / 10000;
+  return { per100g, amount_g: amount };
+}
+
+/**
+ * Records one intake. Supplements with nutrients also get a diary entry (meal "snack"),
+ * linked to the intake so removing the intake removes the entry too.
+ */
+export async function recordIntake(med: Medication, date: string, source: "manual" | "claude", ctx: Ctx): Promise<Result> {
+  const { supabase, userId } = ctx;
+  const { data: log, error } = await supabase
+    .from("medication_logs")
+    .insert({ user_id: userId, medication_id: med.id, name: med.name, dose: med.dose, entry_date: date, source })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+  if (!med.nutrients) return { ok: true };
+  const { per100g, amount_g } = supplementDiaryValues(med.nutrients, med.dose_g);
+  const { error: de } = await supabase.from("diary_entries").insert({
+    user_id: userId,
+    entry_date: date,
+    meal: "snack",
+    food_id: null,
+    food_name: med.name,
+    food_brand: med.dose,
+    source: "custom",
+    source_id: null,
+    nutrients_per_100g: per100g,
+    amount_g,
+    medication_log_id: log.id,
+  });
+  return de ? { ok: false, error: de.message } : { ok: true };
+}
+
+async function getMedication(id: string, ctx: Ctx): Promise<Medication | null> {
+  const { data, error } = await ctx.supabase.from("medications").select(MED_COLUMNS).eq("id", id).eq("user_id", ctx.userId).maybeSingle();
+  if (error || !data) return null;
+  return mapMedication(data);
+}
+
 /** Marks a medication from the list as taken (or not taken) on a day. */
 export async function setMedicationTaken(input: { medicationId: string; date: string; taken: boolean }, ctx?: Ctx): Promise<Result> {
   const parsed = z.object({ medicationId: uuid, date: dateSchema, taken: z.boolean() }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
-  const { supabase, userId } = await ctxOr(ctx);
+  const c = await ctxOr(ctx);
   const { medicationId, date, taken } = parsed.data;
   if (!taken) {
-    const { error } = await supabase.from("medication_logs").delete().eq("user_id", userId).eq("medication_id", medicationId).eq("entry_date", date);
+    // the linked diary entry goes away with the intake (on delete cascade)
+    const { error } = await c.supabase.from("medication_logs").delete().eq("user_id", c.userId).eq("medication_id", medicationId).eq("entry_date", date);
     return error ? { ok: false, error: error.message } : { ok: true };
   }
-  const { data: med, error: me } = await supabase.from("medications").select("name, dose").eq("id", medicationId).eq("user_id", userId).maybeSingle();
-  if (me || !med) return { ok: false, error: me?.message ?? "not_found" };
-  const { count } = await supabase
+  const med = await getMedication(medicationId, c);
+  if (!med) return { ok: false, error: "not_found" };
+  const { count } = await c.supabase
     .from("medication_logs")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
+    .eq("user_id", c.userId)
     .eq("medication_id", medicationId)
     .eq("entry_date", date);
   if (count) return { ok: true };
-  const { error } = await supabase.from("medication_logs").insert({ user_id: userId, medication_id: medicationId, name: med.name, dose: med.dose, entry_date: date });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return recordIntake(med, date, "manual", c);
 }
 
 /** Logs an intake by name (used by Claude). Links to the user's list entry if the name matches. */
@@ -128,11 +213,12 @@ export async function logMedicationByName(input: { name: string; dose?: string |
   const c = await ctxOr(ctx);
   const meds = await listMedications(c);
   const match = meds.find((m) => m.name.toLowerCase() === parsed.data.name.toLowerCase());
+  if (match) return recordIntake({ ...match, dose: parsed.data.dose || match.dose }, parsed.data.date, parsed.data.source, c);
   const { error } = await c.supabase.from("medication_logs").insert({
     user_id: c.userId,
-    medication_id: match?.id ?? null,
-    name: match?.name ?? parsed.data.name,
-    dose: parsed.data.dose || match?.dose || null,
+    medication_id: null,
+    name: parsed.data.name,
+    dose: parsed.data.dose || null,
     entry_date: parsed.data.date,
     source: parsed.data.source,
   });

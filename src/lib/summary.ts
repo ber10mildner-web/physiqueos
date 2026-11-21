@@ -17,7 +17,7 @@ import { dayNumber as dayNumberOf } from "@/lib/body/weight";
 import { sumItems } from "@/lib/nutrition/calc";
 import { NUTRIENT_KEYS, NUTRIENTS } from "@/lib/nutrition/nutrients";
 import { movingAverage, trendChange } from "@/lib/body/weight";
-import { records, volume } from "@/lib/training/calc";
+import { records, volume, workoutMinutes } from "@/lib/training/calc";
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
@@ -91,6 +91,7 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
         date: w.workout_date,
         name: w.name,
         finished: Boolean(w.finished_at),
+        duration_min: workoutMinutes(w.started_at, w.finished_at),
         rating: { feeling: w.feeling, energy: w.energy, effort: w.effort, note: w.rating_note },
         volume_kg: Math.round(volume(w.sets)),
         exercises: [...new Set(w.sets.map((s) => s.exercise_id))].map((id) => {
@@ -100,6 +101,8 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
             exercise: name.get(id) ?? id,
             sets: sets.filter((s) => !s.is_warmup).map((s) => `${s.weight_kg}×${s.reps}`).join(", "),
             best_e1rm_kg: rec.best1RM ? r1(rec.best1RM.value) : null,
+            feeling: w.exercise_notes.find((n) => n.exercise_id === id)?.feeling ?? null,
+            note: w.exercise_notes.find((n) => n.exercise_id === id)?.note ?? null,
           };
         }),
       })),

@@ -23,6 +23,27 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Grundnahrungsmittel in der Suche (Apfel, Kiwi, Zwiebel, Reis …): ca. 260 Lebensmittel mit deutschen Namen, Ballaststoffen und Vitaminen, erscheinen vor Open Food Facts (2026-11-21)
 - [ ] Grundnahrungsmittel erweitern: fehlende Lebensmittel einfach melden (z. B. Quark, Skyr, Brotsorten sind Markenprodukte und kommen weiter über Open Food Facts)
 
+## Feedback nach dem ersten Test (2026-11-21)
+
+- [x] Gym ohne Uhr-Aufzeichnung: Beginn/Ende eintragen (Dauer), Gefühl 1–10 + Notiz pro Übung
+- [x] Wiederholbares Cardio als Vorlage (z. B. Incline Walk 30 min, Steigung 6, Tempo 5): an festen Wochentagen automatisch eintragen oder mit einem Tipp, inkl. Intensität, Puls und kcal
+- [x] Supplemente (z. B. Omega 3) mit kcal/Makros/Vitaminen pro Dosis, zählen in die Tagesernährung, auf Wunsch automatisch an festen Tagen
+- [x] „Gewicht eintragen“: Datumsfeld auf dem iPhone ausgerichtet, Schnellzugriff-Beschriftungen zentriert
+- [x] Flüssiger: Server in Frankfurt (wie die Datenbank), sofortige Ladeanzeige beim Tab-Wechsel, kein doppeltes Neuladen nach dem Speichern
+- [ ] Vorlagen auch für Krafttraining-Einheiten (heute: Trainingspläne)
+- [ ] Gym-Kalorien ohne Uhr schätzen (aus Dauer, Volumen, Gewicht)
+
+## Kommerzialisierung / für andere Leute
+
+- [ ] **Supplement-Empfehlungen mit Affiliate-Links (Idee Leo, 2026-11-21):** Sigma erkennt aus den Ernährungsdaten, welche Nährstoffe dauerhaft fehlen (z. B. Vitamin D im Winter, Omega 3 ohne Fisch, Magnesium), und schlägt passende Supplemente vor, mit Affiliate-Codes (Sigma verdient mit). Voraussetzungen: genug Tage mit Mikronährstoff-Daten (Abdeckung anzeigen), Referenzwerte (DGE/EFSA), vorsichtige Formulierung (keine Heilversprechen, Hinweis „kein Ersatz für ärztlichen Rat“), Affiliate-Links klar als Werbung kennzeichnen (Pflicht in DE/AT), Höchstmengen beachten (z. B. Vitamin D, Zink).
+- [ ] **Für andere Leute nutzbar machen.** Stand 2026-11-21: Die Grundlage ist da. Jede Tabelle hat eine Nutzer-ID und Row Level Security (jeder sieht nur seine Daten, mit Tests abgesichert), Login per E-Mail-Link, Deutsch/Englisch, Claude-Zugang pro Nutzer mit eigenem Token. Was für echte Fremdnutzer noch fehlt:
+  - Registrierung öffnen + Onboarding (Ziel, Größe, Gewicht in 3 Schritten)
+  - Datenschutzerklärung, Impressum, AGB, Daten-Export und Konto löschen (DSGVO)
+  - Garmin-Abgleich ist inoffiziell und läuft über ein Skript am PC: für andere Nutzer offiziell über Strava oder die Garmin-Developer-API (nur für Firmen)
+  - Gemeinsamer Produkt-Cache für Barcodes (heute speichert jeder Nutzer seine eigene Kopie)
+  - Vercel Pro + Supabase Pro (Hobby/Free sind nicht für kommerzielle Nutzung bzw. haben Limits), Fehler-Monitoring, Backups
+  - Bezahlmodell (z. B. Abo über Stripe), falls nicht nur über Affiliate verdient wird
+
 ## Ideen von Claude
 
 - Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel automatisch nachjustieren

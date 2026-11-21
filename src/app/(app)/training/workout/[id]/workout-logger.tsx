@@ -1,12 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LineChart, Plus, Trophy, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
-import type { Exercise, Workout, WorkoutSet } from "@/lib/data/types";
+import type { Exercise, ExerciseNote, Workout, WorkoutSet } from "@/lib/data/types";
 import { estimate1RM, suggestNext, volume } from "@/lib/training/calc";
 import type { ExerciseHint } from "@/lib/training/hints";
 import { Button, Card, Notice, cx } from "@/components/ui";
@@ -14,6 +13,8 @@ import { ExercisePicker, exerciseName } from "../../exercise-picker";
 import { addSetAction, deleteSetAction, deleteWorkoutAction, finishWorkoutAction, hintAction, rateTrainingAction } from "../../actions";
 import { RatingFields, RatingSummary, emptyRating, isRated } from "@/components/rating-form";
 import type { TrainingRating } from "@/lib/data/types";
+import { ExerciseFeeling } from "./exercise-feeling";
+import { WorkoutTimes } from "./workout-times";
 
 type Target = { target_sets: number; rep_min: number; rep_max: number };
 
@@ -23,12 +24,14 @@ export function WorkoutLogger({
   targets,
   order,
   hints: initialHints,
+  timeZone,
 }: {
   workout: Workout;
   exercises: Exercise[];
   targets: Record<string, Target>;
   order: string[];
   hints: Record<string, ExerciseHint>;
+  timeZone: string;
 }) {
   const { t, locale } = useI18n();
   const [exercises, setExercises] = useState(initialExercises);
@@ -53,6 +56,8 @@ export function WorkoutLogger({
         </div>
       </div>
 
+      <WorkoutTimes id={workout.id} date={workout.workout_date} startedAt={workout.started_at} finishedAt={workout.finished_at} timeZone={timeZone} />
+
       {ids.map((exId) => {
         const ex = byId.get(exId);
         if (!ex) return null;
@@ -64,6 +69,7 @@ export function WorkoutLogger({
             sets={workout.sets.filter((s) => s.exercise_id === exId)}
             target={targets[exId]}
             hint={hints[exId]}
+            note={workout.exercise_notes.find((n) => n.exercise_id === exId)}
           />
         );
       })}
@@ -102,9 +108,22 @@ export function WorkoutLogger({
   );
 }
 
-function ExerciseBlock({ workoutId, exercise, sets, target, hint }: { workoutId: string; exercise: Exercise; sets: WorkoutSet[]; target?: Target; hint?: ExerciseHint }) {
+function ExerciseBlock({
+  workoutId,
+  exercise,
+  sets,
+  target,
+  hint,
+  note,
+}: {
+  workoutId: string;
+  exercise: Exercise;
+  sets: WorkoutSet[];
+  target?: Target;
+  hint?: ExerciseHint;
+  note?: ExerciseNote;
+}) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const repMin = target?.rep_min ?? 8;
   const repMax = target?.rep_max ?? 12;
   const suggestion = hint ? suggestNext(hint.lastSets, repMax, exercise.equipment) : null;
@@ -129,7 +148,6 @@ function ExerciseBlock({ workoutId, exercise, sets, target, hint }: { workoutId:
       const e = estimate1RM(w, r);
       setPr(!warmup && best !== undefined && e !== null && e > best + 1e-9);
       setWarmup(false);
-      router.refresh();
     });
   };
 
@@ -184,7 +202,6 @@ function ExerciseBlock({ workoutId, exercise, sets, target, hint }: { workoutId:
                 onClick={() =>
                   start(async () => {
                     await deleteSetAction(s.id);
-                    router.refresh();
                   })
                 }
               >
@@ -248,13 +265,13 @@ function ExerciseBlock({ workoutId, exercise, sets, target, hint }: { workoutId:
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-danger">{t.errors.invalidInput}</p>}
+      <ExerciseFeeling workoutId={workoutId} exerciseId={exercise.id} initial={note} />
     </Card>
   );
 }
 
 function WorkoutRating({ workout }: { workout: Workout }) {
   const { t } = useI18n();
-  const router = useRouter();
   const saved: TrainingRating = { feeling: workout.feeling, energy: workout.energy, effort: workout.effort, rating_note: workout.rating_note };
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<TrainingRating>(isRated(saved) ? saved : emptyRating);
@@ -305,7 +322,6 @@ function WorkoutRating({ workout }: { workout: Workout }) {
               const res = await rateTrainingAction("workout", workout.id, value);
               if (!res.ok) return setError(true);
               setOpen(false);
-              router.refresh();
             })
           }
         >

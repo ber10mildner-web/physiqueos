@@ -85,6 +85,25 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/*
+ * iOS Safari draws date/time fields with its own style: the value is centred,
+ * sits off the vertical middle and the field can be wider than its grid column.
+ * Make them look like every other input.
+ */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

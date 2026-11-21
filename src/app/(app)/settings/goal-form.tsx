@@ -1,6 +1,5 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import type { NutritionGoal, Profile } from "@/lib/data/types";
@@ -15,7 +14,6 @@ type Key = keyof Targets;
 
 export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Profile | null; latestWeightKg: number | null; goal: NutritionGoal | null; today: string }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [phase, setPhase] = useState<Phase>(goal?.phase ?? "maintenance");
@@ -88,7 +86,6 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
           fd.set("phase", phase);
           const res = await saveGoal(fd);
           setStatus(res.ok ? "saved" : "error");
-          if (res.ok) router.refresh();
         })
       }
     >

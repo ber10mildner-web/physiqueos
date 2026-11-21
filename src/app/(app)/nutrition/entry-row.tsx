@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import type { DiaryEntry } from "@/lib/data/types";
@@ -11,7 +10,6 @@ import { deleteEntry, updateEntryAmount } from "./actions";
 
 export function EntryRow({ entry }: { entry: DiaryEntry }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(entry.amount_g));
   const [pending, start] = useTransition();
@@ -37,7 +35,6 @@ export function EntryRow({ entry }: { entry: DiaryEntry }) {
             start(async () => {
               await updateEntryAmount(entry.id, Number(amount.replace(",", ".")));
               setOpen(false);
-              router.refresh();
             });
           }}
         >
@@ -58,7 +55,6 @@ export function EntryRow({ entry }: { entry: DiaryEntry }) {
             onClick={() =>
               start(async () => {
                 await deleteEntry(entry.id);
-                router.refresh();
               })
             }
           >

@@ -1,6 +1,5 @@
 "use client";
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
@@ -9,7 +8,6 @@ import { deleteWeight } from "./actions";
 
 export function WeightHistory({ entries }: { entries: { id: string; date: string; weight: number; average: number }[] }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   return (
     <ul className="divide-y divide-line">
@@ -27,7 +25,6 @@ export function WeightHistory({ entries }: { entries: { id: string; date: string
               if (!confirm(t.common.confirmDelete)) return;
               start(async () => {
                 await deleteWeight(e.id);
-                router.refresh();
               });
             }}
           >

@@ -54,6 +54,12 @@ tests/                Datenbank-Tests gegen das echte SQL (PGlite)
 
 **10. Kalorienbedarf ist eine Schätzung.** Mifflin-St Jeor × Aktivitätsfaktor, Diät −20 %, Lean Bulk +10 %, Protein 1,8–2,2 g/kg, Fett 25 % der Energie, Ballaststoffe ≥ 30 g bzw. 14 g/1000 kcal. Alles bleibt manuell überschreibbar.
 
+**11. Wiederkehrende Einträge ohne Hintergrund-Job.** Cardio-Vorlagen und Supplemente können an festen Wochentagen (`auto_days`, ISO 1 = Montag) von selbst eingetragen werden. Statt eines Crons pro Nutzer ruft jede Hauptseite und jede Claude-Anfrage `ensureRoutines()` auf (`src/lib/data/routines.ts`): Es füllt fällige Tage der letzten 7 Tage auf, aber nie vor `auto_from` (dem Tag, an dem die Regel gespeichert wurde). Jeder automatische Eintrag wird zuerst in `routine_runs` „reserviert“ (Primärschlüssel pro Tag); was dort schon steht, wird nie wieder angelegt. So bleibt ein gelöschter Eintrag gelöscht, und zwei gleichzeitige Anfragen erzeugen keine Duplikate.
+
+**12. Supplemente zählen als Tagebucheintrag.** Ein Supplement mit Nährwerten (pro Dosis, `medications.nutrients`) erzeugt bei jeder Einnahme einen normalen Tagebucheintrag (Mahlzeit „Snack“, `medication_log_id`). Damit rechnen Übersicht, Ernährungsseite, Wochenauswertung und Claude ohne Sonderfall mit. Wird die Einnahme entfernt, verschwindet der Eintrag per `on delete cascade`.
+
+**13. Vercel-Region Frankfurt.** `vercel.json` setzt `regions: ["fra1"]`, damit die Server-Funktionen neben der Supabase-Datenbank (Frankfurt) laufen. Vorher liefen sie in den USA, und jede Seite brauchte mehrere Atlantik-Rundreisen.
+
 ## Externe Dienste, Kosten, Grenzen
 
 | Dienst | Zweck | Kosten | Grenzen / Lizenz |

@@ -17,6 +17,12 @@ import {
   setCardioMachine,
   getCardio,
   savePlan,
+  setWorkoutTimes,
+  setExerciseNote,
+  saveCardioTemplate,
+  archiveCardioTemplate,
+  listCardioTemplates,
+  logCardioTemplate,
   startWorkout,
   updateSet,
 } from "@/lib/data/training";
@@ -107,6 +113,52 @@ export async function archivePlanAction(id: string) {
   redirect("/training");
 }
 
+export async function setWorkoutTimesAction(id: string, input: { started_at: string; finished_at: string | null }): Promise<R> {
+  const res = await setWorkoutTimes(id, input, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+export async function setExerciseNoteAction(input: { workoutId: string; exerciseId: string; feeling: number | null; note: string | null }): Promise<R> {
+  const res = await setExerciseNote(input, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+export async function saveCardioTemplateAction(input: {
+  id?: string;
+  name: string;
+  activity: string;
+  duration_min: number;
+  distance_km: number | null;
+  avg_hr: number | null;
+  kcal: number | null;
+  incline_pct: number | null;
+  speed_kmh: number | null;
+  effort: number | null;
+  auto_days: number[];
+}): Promise<R<{ id: string }>> {
+  const res = await saveCardioTemplate({ ...(input as Parameters<typeof saveCardioTemplate>[0]), today: await getToday() }, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+export async function archiveCardioTemplateAction(id: string): Promise<R> {
+  const res = await archiveCardioTemplate(id, await requireUser());
+  if (res.ok) done();
+  return res;
+}
+
+/** One tap: logs the template for today. */
+export async function logCardioTemplateAction(id: string): Promise<R> {
+  const ctx = await requireUser();
+  const t = (await listCardioTemplates(ctx)).find((x) => x.id === id);
+  if (!t) return { ok: false, error: "not_found" };
+  const res = await logCardioTemplate(t, await getToday(), ctx);
+  if (res.ok) done();
+  return res;
+}
+
 export async function addCardioAction(input: {
   date: string;
   activity: string;
@@ -114,6 +166,8 @@ export async function addCardioAction(input: {
   distance_km: number | null;
   avg_hr: number | null;
   kcal: number | null;
+  incline_pct?: number | null;
+  speed_kmh?: number | null;
 }): Promise<R> {
   const res = await addCardio(input as Parameters<typeof addCardio>[0], await requireUser());
   if (res.ok) done();
