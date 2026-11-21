@@ -30,3 +30,10 @@ export class SourceUnavailableError extends Error {
 }
 
 export const BARCODE_RE = /^[0-9]{6,14}$/;
+
+/** source_id prefix of Sigma's bundled basic foods (stored with source "usda"). See basic.ts. */
+export const BASIC_PREFIX = "sr28-";
+
+export function isBasicSourceId(sourceId: string | null | undefined): boolean {
+  return Boolean(sourceId?.startsWith(BASIC_PREFIX));
+}

@@ -9,6 +9,7 @@ import { FoodRow } from "./food-row";
 
 interface Results {
   mine: FoodCandidate[];
+  basic: FoodCandidate[];
   openfoodfacts: FoodCandidate[];
   usda: FoodCandidate[];
   unavailable: FoodSource[];
@@ -63,7 +64,7 @@ export function FoodSearch({ recent, favorites, onSelect, initialQuery }: { rece
       </Card>
     );
 
-  const empty = results && results.mine.length + results.openfoodfacts.length + results.usda.length === 0;
+  const empty = results && results.mine.length + results.basic.length + results.openfoodfacts.length + results.usda.length === 0;
 
   return (
     <div className="space-y-4">
@@ -89,6 +90,7 @@ export function FoodSearch({ recent, favorites, onSelect, initialQuery }: { rece
       {results ? (
         <>
           {section(t.addFood.myFoods, results.mine)}
+          {section(t.addFood.basicFoods, results.basic, t.addFood.basicHint)}
           {section("Open Food Facts", results.openfoodfacts)}
           {section("USDA FoodData Central", results.usda, t.addFood.usdaHint)}
           {empty && <EmptyState>{t.addFood.noResults}</EmptyState>}
