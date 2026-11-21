@@ -16,7 +16,7 @@ import { StartButton } from "./start-button";
 import { CardioForm, CardioList } from "./cardio";
 import { CardioRoutines } from "./cardio-routines";
 
-export default async function TrainingPage() {
+export default async function TrainingPage({ searchParams }: PageProps<"/training">) {
   const { t, locale } = await getI18n();
   const today = await getToday();
   const dow = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
@@ -31,6 +31,22 @@ export default async function TrainingPage() {
     listCardioTemplates(),
   ]);
   const cardio = await withKcalEstimates(rawCardio);
+  // "Als Vorlage speichern" on a logged session opens the template form with its values
+  const fromId = (await searchParams).vorlage;
+  const from = typeof fromId === "string" ? cardio.find((c) => c.id === fromId) : undefined;
+  const prefill = from
+    ? {
+        name: from.template_id && from.notes ? from.notes : t.training.activities[from.activity],
+        activity: from.activity,
+        duration_min: from.duration_min,
+        distance_km: from.distance_km,
+        avg_hr: from.avg_hr,
+        kcal: from.kcal ?? from.estimate?.kcal ?? null,
+        incline_pct: from.incline_pct,
+        speed_kmh: from.speed_kmh,
+        effort: from.effort,
+      }
+    : null;
   const shown = cardio.slice(0, 15);
   const photoPaths = shown.filter((c) => c.machine_photo_path).map((c) => c.machine_photo_path!);
   const photoUrls: Record<string, string> = {};
@@ -127,14 +143,17 @@ export default async function TrainingPage() {
           )}
         </Card>
 
+        <div id="routines" className="scroll-mt-4">
         <Card>
           <SectionTitle>{t.routines.title}</SectionTitle>
           <CardioRoutines
-            key={templates.map((x) => x.id).join()}
+            key={`${templates.map((x) => x.id).join()}-${from?.id ?? ""}`}
+            prefill={prefill}
             templates={templates}
             loggedToday={cardio.filter((c) => c.session_date === today && c.template_id).map((c) => c.template_id!)}
           />
         </Card>
+        </div>
 
         <Card>
           <SectionTitle>{t.training.addCardio}</SectionTitle>

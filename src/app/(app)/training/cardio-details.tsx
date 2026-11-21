@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { Camera, ExternalLink, Image as ImageIcon, ScanText } from "lucide-react";
+import Link from "next/link";
+import { Camera, ExternalLink, Image as ImageIcon, Repeat, ScanText } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
@@ -8,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { TrainingRating } from "@/lib/data/types";
 import type { CardioWithEstimate } from "@/lib/cardio";
 import type { KcalSource } from "@/lib/training/cardio-kcal";
-import { Button, Field, Input, Notice } from "@/components/ui";
+import { Button, Field, Input, Notice, buttonClass, cx } from "@/components/ui";
 import { RatingFields, emptyRating, isRated } from "@/components/rating-form";
 import { resizeImage } from "../body/photos/resize";
 import { rateTrainingAction, readMachinePhotoAction, saveMachineAction, setMachinePhotoAction } from "./actions";
@@ -230,6 +231,11 @@ export function CardioDetails({
         </section>
       )}
 
+      {!session.template_id && (
+        <Link href={`/training?vorlage=${session.id}#routines`} className={cx(buttonClass("secondary", "sm"), "w-full")}>
+          <Repeat className="size-4" /> {t.routines.saveAsTemplate}
+        </Link>
+      )}
       {status === "error" && <Notice tone="error">{t.errors.invalidInput}</Notice>}
       <div className="flex gap-2">
         <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
