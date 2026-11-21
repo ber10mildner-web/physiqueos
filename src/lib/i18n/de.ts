@@ -425,6 +425,8 @@ const de = {
     remove: "Vorlage löschen",
     weekdaysShort: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
     everyDay: "täglich",
+    saveAsTemplate: "Als Vorlage speichern",
+    saveAsTemplateHint: "Werte aus deiner Einheit übernommen. Name anpassen, Wochentage wählen, speichern.",
     fromTemplate: "Vorlage",
   },
   workoutTimes: {

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
-import { ChevronDown, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Repeat, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
@@ -131,6 +132,16 @@ export function CardioList({
                   </div>
                 )}
               </button>
+              {!c.template_id && (
+                <Link
+                  href={`/training?vorlage=${c.id}#routines`}
+                  aria-label={t.routines.saveAsTemplate}
+                  title={t.routines.saveAsTemplate}
+                  className="grid size-9 place-items-center rounded-xl text-faint hover:text-accent"
+                >
+                  <Repeat className="size-4" />
+                </Link>
+              )}
               <button
                 type="button"
                 aria-label={t.common.delete}

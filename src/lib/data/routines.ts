@@ -52,7 +52,16 @@ async function run(today: string, c: Ctx): Promise<number> {
   for (const r of (data ?? []) as Run[]) {
     if (r.kind === "cardio") {
       const t = templates.find((x) => x.id === r.ref_id);
-      if (t && (await logCardioTemplate(t, r.run_date, c)).ok) made++;
+      if (!t) continue;
+      // the watch already recorded this kind of session that day: don't add it twice
+      const { count } = await c.supabase
+        .from("cardio_sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", c.userId)
+        .eq("session_date", r.run_date)
+        .eq("activity", t.activity)
+        .neq("source", "manual");
+      if (!count && (await logCardioTemplate(t, r.run_date, c)).ok) made++;
     } else {
       const m = meds.find((x) => x.id === r.ref_id);
       if (!m) continue;

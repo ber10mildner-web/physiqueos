@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Pencil, Plus, Repeat } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatNumber } from "@/lib/format";
@@ -13,9 +14,18 @@ const parse = (s: string) => {
   return v === "" ? null : Number(v);
 };
 
-export function CardioRoutines({ templates, loggedToday }: { templates: CardioTemplate[]; loggedToday: string[] }) {
+/** Values to start a new template with, e.g. from a logged session ("Als Vorlage speichern"). */
+export type TemplatePrefill = Omit<CardioTemplate, "id" | "auto_days" | "auto_from">;
+
+export function CardioRoutines({ templates, loggedToday, prefill }: { templates: CardioTemplate[]; loggedToday: string[]; prefill?: TemplatePrefill | null }) {
   const { t, locale } = useI18n();
-  const [editing, setEditing] = useState<string | "new" | null>(null);
+  const router = useRouter();
+  const [editing, setEditing] = useState<string | "new" | null>(prefill ? "new" : null);
+  const closeNew = () => {
+    setEditing(null);
+    // drop ?vorlage=… so a reload doesn't open the form again
+    if (prefill) router.replace("/training", { scroll: false });
+  };
   const [logged, setLogged] = useState(new Set(loggedToday));
   const [, start] = useTransition();
 
@@ -86,7 +96,7 @@ export function CardioRoutines({ templates, loggedToday }: { templates: CardioTe
       )}
       {!templates.length && editing !== "new" && <p className="text-sm text-muted">{t.routines.empty}</p>}
       {editing === "new" ? (
-        <TemplateEditor template={null} onDone={() => setEditing(null)} />
+        <TemplateEditor template={null} prefill={prefill ?? null} onDone={closeNew} />
       ) : (
         <Button type="button" variant="secondary" className="w-full" onClick={() => setEditing("new")}>
           <Plus className="size-4" /> {t.routines.new}
@@ -96,18 +106,19 @@ export function CardioRoutines({ templates, loggedToday }: { templates: CardioTe
   );
 }
 
-function TemplateEditor({ template, onDone }: { template: CardioTemplate | null; onDone: () => void }) {
+function TemplateEditor({ template, prefill = null, onDone }: { template: CardioTemplate | null; prefill?: TemplatePrefill | null; onDone: () => void }) {
   const { t } = useI18n();
+  const base = template ?? prefill;
   const [v, setV] = useState({
-    name: template?.name ?? "",
-    activity: template?.activity ?? "walk",
-    duration_min: template ? String(template.duration_min) : "",
-    incline_pct: template?.incline_pct != null ? String(template.incline_pct) : "",
-    speed_kmh: template?.speed_kmh != null ? String(template.speed_kmh) : "",
-    avg_hr: template?.avg_hr != null ? String(template.avg_hr) : "",
-    kcal: template?.kcal != null ? String(template.kcal) : "",
+    name: base?.name ?? "",
+    activity: base?.activity ?? "walk",
+    duration_min: base ? String(base.duration_min) : "",
+    incline_pct: base?.incline_pct != null ? String(base.incline_pct) : "",
+    speed_kmh: base?.speed_kmh != null ? String(base.speed_kmh) : "",
+    avg_hr: base?.avg_hr != null ? String(base.avg_hr) : "",
+    kcal: base?.kcal != null ? String(base.kcal) : "",
   });
-  const [effort, setEffort] = useState<number | null>(template?.effort ?? null);
+  const [effort, setEffort] = useState<number | null>(base?.effort ?? null);
   const [days, setDays] = useState<number[]>(template?.auto_days ?? []);
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
@@ -136,7 +147,8 @@ function TemplateEditor({ template, onDone }: { template: CardioTemplate | null;
     });
 
   return (
-    <div className="space-y-3 rounded-2xl border border-line p-3">
+    <div className={cx("space-y-3 rounded-2xl border p-3", prefill ? "border-accent/50" : "border-line")}>
+      {prefill && <p className="text-sm text-accent">{t.routines.saveAsTemplateHint}</p>}
       <div className="grid grid-cols-2 gap-3">
         <Field label={t.routines.name} className="col-span-2">
           <Input value={v.name} onChange={set("name")} maxLength={100} placeholder={t.routines.namePlaceholder} />

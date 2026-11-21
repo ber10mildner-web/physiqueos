@@ -422,6 +422,8 @@ const en: Dictionary = {
     remove: "Delete template",
     weekdaysShort: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     everyDay: "daily",
+    saveAsTemplate: "Save as template",
+    saveAsTemplateHint: "Values taken from your session. Adjust the name, pick weekdays, save.",
     fromTemplate: "Template",
   },
   workoutTimes: {
