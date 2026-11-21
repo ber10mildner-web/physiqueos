@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatDate } from "@/lib/dates";
@@ -21,7 +20,6 @@ const FIELDS = [
 
 export function HealthForm({ today }: { today: string }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const labels: Record<(typeof FIELDS)[number]["name"], string> = {
@@ -58,7 +56,6 @@ export function HealthForm({ today }: { today: string }) {
             stress: int("stress"),
           });
           setStatus(res.ok ? "saved" : "error");
-          if (res.ok) router.refresh();
         })
       }
     >

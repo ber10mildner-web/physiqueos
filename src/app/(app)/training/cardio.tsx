@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
@@ -20,7 +19,6 @@ const optNum = (v: FormDataEntryValue | null) => {
 
 export function CardioForm({ today }: { today: string }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   return (
@@ -37,9 +35,10 @@ export function CardioForm({ today }: { today: string }) {
             distance_km: optNum(fd.get("distance_km")),
             avg_hr: avg === null ? null : Math.round(avg),
             kcal: kcal === null ? null : Math.round(kcal),
+            incline_pct: optNum(fd.get("incline_pct")),
+            speed_kmh: optNum(fd.get("speed_kmh")),
           });
           setStatus(res.ok ? "saved" : "error");
-          if (res.ok) router.refresh();
         })
       }
     >
@@ -68,6 +67,12 @@ export function CardioForm({ today }: { today: string }) {
         <Field label={`${t.training.kcal} (${t.common.optional})`}>
           <Input name="kcal" type="number" inputMode="numeric" min={0} max={10000} className="num" />
         </Field>
+        <Field label={`${t.routines.incline} (${t.common.optional})`}>
+          <Input name="incline_pct" type="number" inputMode="decimal" min={0} max={40} step="any" className="num" />
+        </Field>
+        <Field label={`${t.routines.speed} (${t.common.optional})`}>
+          <Input name="speed_kmh" type="number" inputMode="decimal" min={0} max={40} step="any" className="num" />
+        </Field>
       </div>
       {status === "error" && <Notice tone="error">{t.errors.invalidInput}</Notice>}
       <Button type="submit" className="w-full" disabled={pending}>
@@ -91,7 +96,6 @@ export function CardioList({
   hasWeight: boolean;
 }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState<string | null>(null);
   if (!sessions.length) return <EmptyState>{t.training.noCardio}</EmptyState>;
@@ -107,6 +111,7 @@ export function CardioList({
                 <div className="flex items-center gap-1.5 font-medium">
                   {t.training.activities[c.activity]}
                   {c.source === "garmin" && <span className="text-xs font-normal text-faint">· Garmin</span>}
+                  {c.template_id && c.notes && <span className="truncate text-xs font-normal text-faint">· {c.notes}</span>}
                   <ChevronDown className={cx("size-4 text-faint transition", open === c.id && "rotate-180")} />
                 </div>
                 <div className="num text-xs text-muted">
@@ -114,6 +119,8 @@ export function CardioList({
                   {c.distance_km !== null && ` · ${formatNumber(c.distance_km, locale, 2)} km`}
                   {c.avg_hr !== null && ` · ${c.avg_hr} bpm`}
                   {c.kcal !== null && ` · ${c.kcal} kcal`}
+                  {c.incline_pct !== null && ` · ${formatNumber(c.incline_pct, locale, 1)} %`}
+                  {c.speed_kmh !== null && ` · ${formatNumber(c.speed_kmh, locale, 1)} km/h`}
                 </div>
                 {(showEstimate || c.feeling !== null || (c.machine_photo_path && machineEmpty)) && (
                   <div className="num mt-0.5 text-xs">
@@ -133,7 +140,6 @@ export function CardioList({
                   if (!confirm(t.common.confirmDelete)) return;
                   start(async () => {
                     await deleteCardioAction(c.id);
-                    router.refresh();
                   });
                 }}
               >

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ensureRoutines } from "@/lib/data/routines";
 import { ImageIcon, ChevronRight } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getWeights } from "@/lib/data";
@@ -25,6 +26,7 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
   const range: RangeKey = typeof sp.range === "string" && sp.range in RANGES ? (sp.range as RangeKey) : "90";
   const days = RANGES[range];
   const from = days ? addDays(today, -days + 1) : undefined;
+  await ensureRoutines(today);
   // Fetch 6 extra days so the moving average at the start of the range is correct.
   const [weights, health, skin, medications, medLogs] = await Promise.all([
     getWeights(from ? addDays(from, -6) : undefined),

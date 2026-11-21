@@ -49,7 +49,6 @@ export function PlanEditor({ plan, exercises: initialExercises }: { plan: Workou
       });
       if (!res.ok) return setError(true);
       router.push("/training");
-      router.refresh();
     });
   };
 

@@ -1,6 +1,5 @@
 "use client";
 import { useOptimistic, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Droplet, Minus } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -10,14 +9,12 @@ import { changeWater } from "./actions";
 
 export function WaterCard({ date, totalMl, targetMl }: { date: string; totalMl: number; targetMl: number }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(totalMl);
   const add = (ml: number) =>
     start(async () => {
       setOptimistic(Math.max(0, optimistic + ml));
       await changeWater(date, ml);
-      router.refresh();
     });
   return (
     <div>

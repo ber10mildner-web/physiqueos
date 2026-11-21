@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -9,7 +8,6 @@ import { copyMeal } from "./actions";
 
 export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; toDate: string; meal: MealSlot }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   return (
@@ -21,8 +19,7 @@ export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; t
         onClick={() =>
           start(async () => {
             const res = await copyMeal(fromDate, toDate, meal);
-            if (res.ok && res.copied) router.refresh();
-            else setMsg(res.ok ? t.tracking.nothingToCopy : t.common.error);
+            if (!(res.ok && res.copied)) setMsg(res.ok ? t.tracking.nothingToCopy : t.common.error);
           })
         }
       >

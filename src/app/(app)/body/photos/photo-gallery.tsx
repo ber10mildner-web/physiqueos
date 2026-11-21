@@ -1,7 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- signed URLs are short-lived; bypass the image optimizer on purpose */
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Camera, Columns2, Trash2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -16,7 +15,6 @@ import { resizeImage } from "./resize";
 
 export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: string; photos: ProgressPhoto[]; weightByDate: Record<string, number>; today: string }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pose, setPose] = useState<PhotoPose>("front");
   const [date, setDate] = useState(today);
@@ -42,7 +40,6 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
       if (upErr) throw upErr;
       const res = await recordPhoto({ storage_path: path, taken_on: date, pose, width, height });
       if (!res.ok) throw new Error(res.error);
-      router.refresh();
     } catch {
       setError(t.common.error);
     } finally {
@@ -160,7 +157,6 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
                         if (!confirm(t.common.confirmDelete)) return;
                         start(async () => {
                           await deletePhoto(p.id);
-                          router.refresh();
                         });
                       }}
                     >

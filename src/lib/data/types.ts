@@ -164,6 +164,7 @@ export interface Workout {
   effort: number | null;
   rating_note: string | null;
   sets: WorkoutSet[];
+  exercise_notes: ExerciseNote[];
 }
 
 /** Subjective rating after a workout or cardio session, each 1–10. */
@@ -197,6 +198,32 @@ export interface CardioSession {
   machine_steps: number | null;
   machine_kcal: number | null;
   machine_photo_path: string | null;
+  incline_pct: number | null;
+  speed_kmh: number | null;
+  template_id: string | null;
+}
+
+/** Repeatable cardio, e.g. "Incline walk 30 min, 6 %, 5 km/h". auto_days: ISO weekdays (1 = Monday). */
+export interface CardioTemplate {
+  id: string;
+  name: string;
+  activity: CardioActivity;
+  duration_min: number;
+  distance_km: number | null;
+  avg_hr: number | null;
+  kcal: number | null;
+  incline_pct: number | null;
+  speed_kmh: number | null;
+  effort: number | null;
+  auto_days: number[];
+  auto_from: string;
+}
+
+/** How one exercise felt in a workout. */
+export interface ExerciseNote {
+  exercise_id: string;
+  feeling: number | null;
+  note: string | null;
 }
 
 export const SKIN_AREAS = ["forehead", "nose", "cheeks", "chin", "jaw", "neck", "chest", "back", "other"] as const;
@@ -219,6 +246,12 @@ export interface Medication {
   dose: string | null;
   kind: MedicationKind;
   position: number;
+  /** Nutrients of ONE dose (null = no nutrients, e.g. a medication). */
+  nutrients: NutrientMap | null;
+  /** Weight of one dose in g (used for the diary entry). */
+  dose_g: number | null;
+  auto_days: number[];
+  auto_from: string;
 }
 
 export interface MedicationLog {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ensureRoutines } from "@/lib/data/routines";
 import { ScanBarcode, Plus, Scale, Camera, Quote, Sparkles } from "lucide-react";
 import { quoteOfDay } from "@/lib/quotes";
 import { getI18n } from "@/lib/i18n/server";
@@ -14,6 +15,7 @@ import { DaySummary } from "@/components/day-summary";
 export default async function DashboardPage() {
   const { t, locale } = await getI18n();
   const today = await getToday();
+  await ensureRoutines(today);
   const [entries, goal, weights, profile] = await Promise.all([getDiary(today), getGoalOn(today), getWeights(addDays(today, -40)), getProfile()]);
   const totals = sumItems(entries);
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
@@ -56,7 +58,7 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-4 gap-2">
           {actions.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} className="flex flex-col items-center gap-2 rounded-3xl border border-line bg-surface py-4 text-xs text-muted transition hover:bg-surface-2 active:scale-[0.97]">
+            <Link key={href} href={href} className="flex flex-col items-center justify-start gap-2 rounded-3xl border border-line bg-surface px-1 py-4 text-center text-xs leading-tight text-muted transition hover:bg-surface-2 active:scale-[0.97]">
               <Icon className="size-[22px] text-accent" strokeWidth={1.9} />
               {label}
             </Link>

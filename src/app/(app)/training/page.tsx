@@ -8,18 +8,28 @@ import { withKcalEstimates } from "@/lib/cardio";
 import { displayReaderEnabled } from "@/lib/ai/display-reader";
 import { addDays, formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
-import { listCardio, listPlans, listWorkouts } from "@/lib/data/training";
-import { volume } from "@/lib/training/calc";
+import { listCardio, listCardioTemplates, listPlans, listWorkouts } from "@/lib/data/training";
+import { ensureRoutines } from "@/lib/data/routines";
+import { volume, workoutMinutes } from "@/lib/training/calc";
 import { Card, EmptyState, Page, PageHeader, SectionTitle, buttonClass } from "@/components/ui";
 import { StartButton } from "./start-button";
 import { CardioForm, CardioList } from "./cardio";
+import { CardioRoutines } from "./cardio-routines";
 
 export default async function TrainingPage() {
   const { t, locale } = await getI18n();
   const today = await getToday();
   const dow = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
   const weekStart = addDays(today, -dow);
-  const [plans, workouts, rawCardio, ctx, latestWeight] = await Promise.all([listPlans(), listWorkouts({ limit: 30 }), listCardio({ from: addDays(today, -60) }), requireUser(), getLatestWeight()]);
+  await ensureRoutines(today);
+  const [plans, workouts, rawCardio, ctx, latestWeight, templates] = await Promise.all([
+    listPlans(),
+    listWorkouts({ limit: 30 }),
+    listCardio({ from: addDays(today, -60) }),
+    requireUser(),
+    getLatestWeight(),
+    listCardioTemplates(),
+  ]);
   const cardio = await withKcalEstimates(rawCardio);
   const shown = cardio.slice(0, 15);
   const photoPaths = shown.filter((c) => c.machine_photo_path).map((c) => c.machine_photo_path!);
@@ -104,7 +114,9 @@ export default async function TrainingPage() {
                       <div className="truncate font-medium">{w.name}</div>
                       <div className="text-xs text-muted">
                         {formatDate(w.workout_date, locale)} · {fmt(t.training.setsCount, { n: w.sets.filter((s) => !s.is_warmup).length })} ·{" "}
-                        {formatNumber(volume(w.sets), locale)} kg {w.finished_at ? "" : `· ${t.training.active}`}
+                        {formatNumber(volume(w.sets), locale)} kg
+                        {workoutMinutes(w.started_at, w.finished_at) !== null && ` · ${workoutMinutes(w.started_at, w.finished_at)} min`}
+                        {w.finished_at ? "" : ` · ${t.training.active}`}
                       </div>
                     </div>
                     <ChevronRight className="size-4 text-faint" />
@@ -113,6 +125,15 @@ export default async function TrainingPage() {
               ))}
             </ul>
           )}
+        </Card>
+
+        <Card>
+          <SectionTitle>{t.routines.title}</SectionTitle>
+          <CardioRoutines
+            key={templates.map((x) => x.id).join()}
+            templates={templates}
+            loggedToday={cardio.filter((c) => c.session_date === today && c.template_id).map((c) => c.template_id!)}
+          />
         </Card>
 
         <Card>

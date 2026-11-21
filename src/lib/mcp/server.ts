@@ -13,6 +13,9 @@ import { getDiary, getFood, getFoodByBarcode, getGoalOn, getPhotos, getProfile, 
 import { logFoodEntry, upsertWeight } from "@/lib/data/mutations";
 import { addWater, getWater } from "@/lib/data/tracking";
 import { getRecipe, listRecipes, logRecipeEntry, saveRecipe } from "@/lib/data/recipes";
+import { ensureRoutines } from "@/lib/data/routines";
+import { listCardioTemplates } from "@/lib/data/training";
+import { workoutMinutes } from "@/lib/training/calc";
 import { addCardio, addSet, finishWorkout, getCardio, listCardio, listExercises, listPlans, listWorkouts, rateTraining, setCardioMachine, startWorkout } from "@/lib/data/training";
 import { getHealthRange, upsertHealth } from "@/lib/data/health";
 import { getMedicationLogs, getSkinRange, listMedications, logMedicationByName, upsertSkin } from "@/lib/data/wellbeing";
@@ -38,7 +41,9 @@ NEVER invent nutritional values. Use values from search_foods / lookup_barcode r
 
 Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then "basic" for whole/unprocessed foods like fruit, vegetables, rice or eggs, then Open Food Facts for branded products, then USDA for anything else), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
 
-Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10), skin log and medication intake. Be concrete and honest about missing data.
+Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10) and per-exercise feelings (exercise_notes in get_training), skin log and medication intake. Be concrete and honest about missing data.
+
+Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
 Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
 
@@ -127,10 +132,13 @@ function cardioOut(c: Awaited<ReturnType<typeof withKcalEstimates>>[number]) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone = "Europe/Berlin") {
   const today = () => todayIn(timeZone);
+  // Automatic routine entries (cardio templates, daily supplements) are filled in once per request.
+  let routines: Promise<number> | null = null;
   const tool = (name: string, description: string, inputSchema: z.ZodObject, handler: (args: never) => Promise<unknown>, write = false) => {
     if (write && !canWrite) return;
     server.registerTool(name, { title: name, description, inputSchema }, async (args: never) => {
       try {
+        await (routines ??= ensureRoutines(today(), ctx));
         return await handler(args);
       } catch (e) {
         return fail(`Error: ${(e as Error).message}`);
@@ -218,12 +226,24 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
   });
 
   tool("get_training", "Workouts (with sets) and cardio in a range, plus the exercise library and plans.", z.object({ from: date, to: date }), async ({ from, to }: { from: string; to: string }) => {
-    const [workouts, rawCardio, exercises, plans] = await Promise.all([listWorkouts({ from, to }, ctx), listCardio({ from, to }, ctx), listExercises(ctx), listPlans(ctx)]);
+    const [workouts, rawCardio, exercises, plans, templates] = await Promise.all([
+      listWorkouts({ from, to }, ctx),
+      listCardio({ from, to }, ctx),
+      listExercises(ctx),
+      listPlans(ctx),
+      listCardioTemplates(ctx),
+    ]);
     const cardio = await withKcalEstimates(rawCardio, ctx);
     const name = new Map(exercises.map((e) => [e.id, e.name_de]));
     return json({
-      workouts: workouts.map((w) => ({ ...w, sets: w.sets.map((s) => ({ exercise: name.get(s.exercise_id), reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe, warmup: s.is_warmup })) })),
+      workouts: workouts.map((w) => ({
+        ...w,
+        duration_min: workoutMinutes(w.started_at, w.finished_at),
+        sets: w.sets.map((s) => ({ exercise: name.get(s.exercise_id), reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe, warmup: s.is_warmup })),
+        exercise_notes: w.exercise_notes.map((n) => ({ exercise: name.get(n.exercise_id), feeling: n.feeling, note: n.note })),
+      })),
       cardio: cardio.map(cardioOut),
+      cardio_routines: templates.map((t) => ({ name: t.name, activity: t.activity, duration_min: t.duration_min, incline_pct: t.incline_pct, speed_kmh: t.speed_kmh, avg_hr: t.avg_hr, kcal: t.kcal, effort: t.effort, auto_weekdays_iso: t.auto_days })),
       plans: plans.map((p) => ({ name: p.name, exercises: p.exercises.map((e) => ({ exercise: name.get(e.exercise_id), sets: e.target_sets, reps: `${e.rep_min}-${e.rep_max}` })) })),
       exercise_library: exercises.map((e) => ({ exercise_id: e.id, name: e.name_de, name_en: e.name_en, muscle_group: e.muscle_group, equipment: e.equipment })),
     });

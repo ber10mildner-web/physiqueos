@@ -67,3 +67,11 @@ export function suggestNext(lastSession: SetLike[], repMax: number, equipment: s
   if (step > 0 && topSets.every((s) => s.reps >= repMax)) return { kind: "increase", weight_kg: Math.round((top + step) * 100) / 100 };
   return { kind: "same", weight_kg: top };
 }
+
+/** Workout length in whole minutes, or null while it is still running / times are implausible. */
+export function workoutMinutes(startedAt: string, finishedAt: string | null): number | null {
+  if (!finishedAt) return null;
+  const ms = Date.parse(finishedAt) - Date.parse(startedAt);
+  if (!Number.isFinite(ms) || ms <= 0 || ms > 12 * 3600_000) return null;
+  return Math.round(ms / 60_000);
+}

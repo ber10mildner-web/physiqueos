@@ -108,7 +108,6 @@ export function RecipeEditor({ recipe, recent, favorites, today }: { recipe: Rec
     setStatus({ tone: "success", text: t.recipes.saved });
     setDirty(false);
     if (!recipe) router.replace(`/nutrition/recipes/${res.id}`);
-    else router.refresh();
     return res.id;
   }
 

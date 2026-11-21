@@ -1,6 +1,5 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Camera, ScanText } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -59,7 +58,6 @@ export function CardioDetails({
   onClose: () => void;
 }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const saved: TrainingRating = { feeling: session.feeling, energy: session.energy, effort: session.effort, rating_note: session.rating_note };
@@ -80,7 +78,6 @@ export function CardioDetails({
       if (error) throw error;
       const res = await setMachinePhotoAction(session.id, path);
       if (!res.ok) throw new Error(res.error);
-      router.refresh();
       if (aiEnabled) await read();
     } catch {
       setStatus("error");
@@ -113,7 +110,6 @@ export function CardioDetails({
       for (const k of ["machine_floors", "machine_steps", "machine_kcal"] as const) if (values[k] !== null) values[k] = Math.round(values[k]!);
       const [m, r] = await Promise.all([saveMachineAction(session.id, values), rateTrainingAction("cardio", session.id, rating)]);
       setStatus(m.ok && r.ok ? "saved" : "error");
-      if (m.ok && r.ok) router.refresh();
     });
 
   const labels: Record<MachineField, string> = {

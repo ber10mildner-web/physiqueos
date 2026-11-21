@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { Button, Notice } from "@/components/ui";
@@ -14,7 +13,6 @@ function errorText(t: ReturnType<typeof useI18n>["t"], error: string) {
 
 export function GarminConnectForm() {
   const { t } = useI18n();
-  const router = useRouter();
   const [value, setValue] = useState("");
   const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -29,7 +27,6 @@ export function GarminConnectForm() {
           if (res.ok) {
             setValue("");
             setMsg({ tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) + (res.sync.note ? ` Details: ${res.sync.note}` : "") });
-            router.refresh();
           } else setMsg({ tone: "error", text: errorText(t, res.error) });
         });
       }}
@@ -56,7 +53,6 @@ export function GarminConnectForm() {
 
 export function GarminStatus({ conn }: { conn: { display_name: string | null; status: string; last_error: string | null; last_sync_at: string | null } }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const [pending, start] = useTransition();
   const last = conn.last_sync_at
@@ -89,7 +85,6 @@ export function GarminStatus({ conn }: { conn: { display_name: string | null; st
                   ? { tone: "success", text: fmt(t.garmin.syncResult, { days: res.sync.days, activities: res.sync.activities }) + (res.sync.note ? ` Details: ${res.sync.note}` : "") }
                   : { tone: "error", text: errorText(t, res.error) },
               );
-              router.refresh();
             })
           }
         >
@@ -103,7 +98,6 @@ export function GarminStatus({ conn }: { conn: { display_name: string | null; st
             confirm(t.common.confirmDelete) &&
             start(async () => {
               await disconnectGarmin();
-              router.refresh();
             })
           }
         >

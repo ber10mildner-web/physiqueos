@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
@@ -10,7 +9,6 @@ import { createConnection, revokeConnection } from "./actions";
 
 export function ConnectForm() {
   const { t } = useI18n();
-  const router = useRouter();
   const [name, setName] = useState("Claude");
   const [canWrite, setCanWrite] = useState(true);
   const [url, setUrl] = useState<string | null>(null);
@@ -50,7 +48,6 @@ export function ConnectForm() {
           const res = await createConnection(name, canWrite);
           if (res.ok) {
             setUrl(res.url);
-            router.refresh();
           } else setError(true);
         });
       }}
@@ -75,7 +72,6 @@ export function ConnectForm() {
 
 export function TokenList({ tokens }: { tokens: { id: string; name: string; token_prefix: string; can_write: boolean; created_at: string; last_used_at: string | null }[] }) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const [pending, start] = useTransition();
   if (!tokens.length) return <EmptyState>{t.connect.none}</EmptyState>;
   return (
@@ -98,7 +94,6 @@ export function TokenList({ tokens }: { tokens: { id: string; name: string; toke
               if (!confirm(t.common.confirmDelete)) return;
               start(async () => {
                 await revokeConnection(tk.id);
-                router.refresh();
               });
             }}
           >
