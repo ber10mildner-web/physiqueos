@@ -583,7 +583,7 @@ const de = {
     skinShort: "Haut: {value}",
     privacy: "Nur für dich sichtbar. Sigma gibt keine medizinischen Ratschläge; sprich Medikamente immer mit deinem Arzt ab.",
     nutrients: "Nährwerte pro Dosis (optional)",
-    nutrientsHint: "Z. B. Omega 3: 1 Kapsel ≈ 9 kcal, 1 g Fett. Wenn ausgefüllt, zählt die Einnahme in deine Tagesernährung (unter Snack).",
+    nutrientsHint: "Z. B. Omega 3: 1 Kapsel ≈ 9 kcal, 1 g Fett. Wenn ausgefüllt, zählt die Einnahme in deine Tagesernährung (unter Snack), auch für Einnahmen der letzten 7 Tage.",
     doseG: "Gewicht einer Dosis (g)",
     moreNutrients: "Vitamine & Mineralstoffe",
     daily: "Automatisch an",
