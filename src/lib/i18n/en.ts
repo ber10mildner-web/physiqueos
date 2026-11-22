@@ -16,6 +16,7 @@ const en: Dictionary = {
     close: "Close",
     today: "Today",
     yesterday: "Yesterday",
+    tomorrow: "Tomorrow",
     optional: "optional",
     unknown: "unknown",
     loading: "Loading …",

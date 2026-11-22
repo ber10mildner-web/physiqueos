@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Coffee, Cookie, Dumbbell, Moon, Pill, Plus, Sun, Zap } from "lucide-react";
+import { Coffee, Cookie, Dumbbell, Moon, Pill, Sun, Zap } from "lucide-react";
+import { MEAL_COLORS, tint } from "@/lib/meal-colors";
 import type { Dictionary } from "@/lib/i18n";
 import { fmt } from "@/lib/i18n";
 import type { DiaryEntry, MealSlot } from "@/lib/data/types";
@@ -10,7 +10,7 @@ import { addDays } from "@/lib/dates";
 import { Card, cx } from "@/components/ui";
 import { EntryRow } from "./entry-row";
 import { CopyMealButton } from "./copy-meal-button";
-import { QuickAdd } from "./quick-add";
+import { MealActions } from "./meal-actions";
 
 const MEAL_ICON = { breakfast: Coffee, pre_workout: Zap, lunch: Sun, post_workout: Dumbbell, dinner: Moon, snack: Cookie } as const;
 
@@ -41,11 +41,13 @@ export function MealCard({
   const Icon = meal === "snack" && /suppl|vitamin|pill|kapsel/i.test(name) ? Pill : MEAL_ICON[meal];
   const p = totals.protein_g.value;
   const main = meal !== "snack";
+  const color = MEAL_COLORS[meal];
+  const open = picks.filter((p) => !items.some((e) => (p.kind === "recipe" ? e.recipe_id : e.food_id) === p.id)).slice(0, 8);
   return (
-    <Card className="p-0">
-      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-surface-2 text-accent">
-          <Icon className="size-5" strokeWidth={1.9} />
+    <Card className="overflow-hidden !p-0" style={{ borderColor: tint(color, 30) }}>
+      <div className="flex items-start gap-3 border-b px-4 pt-4 pb-3" style={{ background: tint(color, 9), borderColor: tint(color, 25) }}>
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl" style={{ background: tint(color, 20), color }}>
+          <Icon className="size-5" strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-[17px] leading-tight font-semibold">{name}</h2>
@@ -63,21 +65,14 @@ export function MealCard({
         )}
       </div>
       {items.length > 0 && (
-        <ul className="divide-y divide-line border-t border-line">
+        <ul className="divide-y divide-line">
           {items.map((e) => (
             <EntryRow key={e.id} entry={e} favorite={Boolean(e.food_id && favoriteIds.has(e.food_id))} />
           ))}
         </ul>
       )}
       <div className="space-y-3 px-4 pt-3 pb-4">
-        <QuickAdd picks={picks.filter((p) => !items.some((e) => (p.kind === "recipe" ? e.recipe_id : e.food_id) === p.id)).slice(0, 8)} meal={meal} date={date} />
-        <Link
-            href={`/nutrition/add?date=${date}&meal=${meal}`}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-surface-2 text-sm font-medium text-text transition hover:bg-surface-3 active:scale-[0.98]"
-            aria-label={fmt(t.nutrition.addTo, { meal: name })}
-          >
-            <Plus className="size-4 text-accent" /> {t.quick.search}
-        </Link>
+        <MealActions meal={meal} date={date} picks={open} color={color} label={fmt(t.nutrition.addTo, { meal: name })} startOpen={items.length === 0} />
         {items.length === 0 && <CopyMealButton fromDate={addDays(date, -1)} toDate={date} meal={meal} />}
       </div>
     </Card>

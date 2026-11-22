@@ -4,6 +4,12 @@
  * ("Erdnussbutter" before "Butter", "Reiswaffel" before "Reis").
  */
 const RULES: [RegExp, string][] = [
+  // specific ingredients first, so "Burger Gurken" (pickles) is not a burger
+  [/gurke|cucumber|pickle|cornichon/, "🥒"],
+  [/elektrolyt|electrolyte|isotonic|isoton/, "💧"],
+  [/zimt|cinnamon|gewürz|spice|pfeffer|paprikapulver|kurkuma|turmeric|curry ?pulver|muskat|oregano|basilikum|kräuter|herb|\bsalz\b|\bsalt\b/, "🧂"],
+  [/dattel|\bdates?\b|feige|\bfigs?\b|rosine|raisin|trockenobst|dried fruit|pflaume|prune/, "🌴"],
+  [/flohsamen|psyllium|inulin|ballaststoff/, "🌾"],
   [/protein ?pulver|whey|casein|protein ?shake|isolat/, "🥤"],
   [/protein ?riegel|protein ?bar|riegel|\bbar\b|müsliriegel/, "🍫"],
   [/erdnussbutter|peanut butter|nussmus|mandelmus/, "🥜"],
@@ -70,10 +76,17 @@ const RULES: [RegExp, string][] = [
   [/omega|kapsel|capsule|vitamin|supplement|magnesium|zink|kreatin|creatine/, "💊"],
 ];
 
-export const DEFAULT_FOOD_ICON = "🍽️";
-
-export function foodIcon(name: string, kind?: "recipe" | "food" | string | null): string {
+/**
+ * The picture for a food, or null when nothing fits. A neutral letter is better
+ * than a misleading picture, so unknown foods get their initial (see FoodIcon).
+ */
+export function foodIcon(name: string, kind?: "recipe" | "food" | string | null): string | null {
   const n = name.toLowerCase();
   for (const [re, icon] of RULES) if (re.test(n)) return icon;
-  return kind === "recipe" ? "🥘" : DEFAULT_FOOD_ICON;
+  return kind === "recipe" ? "🥘" : null;
+}
+
+/** First letter for the neutral fallback tile. */
+export function foodInitial(name: string): string {
+  return (name.trim().match(/\p{L}|\p{N}/u)?.[0] ?? "?").toUpperCase();
 }

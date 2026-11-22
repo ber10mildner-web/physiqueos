@@ -5,7 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { getDiary, getGoalOn, getLatestWeight, getLoggedDates, getProfile } from "@/lib/data";
 import { getQuickPicks, getWater } from "@/lib/data/tracking";
 import { getToday } from "@/lib/auth";
-import { addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
+import { PLAN_AHEAD_DAYS, addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
 import { rankForMeal } from "@/lib/nutrition/quick-picks";
 import { proteinPerMealTarget } from "@/lib/nutrition/protein-meals";
@@ -23,7 +23,8 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const { t, locale } = await getI18n();
   const today = await getToday();
   const sp = await searchParams;
-  const date = isIsoDate(sp.date) && sp.date <= today ? sp.date : today;
+  const lastDay = addDays(today, PLAN_AHEAD_DAYS);
+  const date = isIsoDate(sp.date) && sp.date <= lastDay ? sp.date : today;
   await ensureRoutines(today);
   const monday = startOfWeek(date);
   const [entries, goal, water, profile, picks, logged, weight] = await Promise.all([
@@ -41,7 +42,13 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const proteinTarget = proteinPerMealTarget(weight?.weight_kg ?? null, goal?.protein_g ?? null);
   const favoriteIds = new Set(picks.filter((p) => p.favorite && p.kind === "food").map((p) => p.id));
   const label =
-    date === today ? t.common.today : date === addDays(today, -1) ? t.common.yesterday : formatDate(date, locale, { weekday: "long", day: "numeric", month: "long" });
+    date === today
+      ? t.common.today
+      : date === addDays(today, -1)
+        ? t.common.yesterday
+        : date === addDays(today, 1)
+          ? t.common.tomorrow
+          : formatDate(date, locale, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <Page>
@@ -55,7 +62,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
           </Link>
         }
       />
-      <WeekStrip date={date} today={today} logged={logged} locale={locale} t={t} />
+      <WeekStrip date={date} today={today} lastDay={lastDay} logged={logged} locale={locale} t={t} />
 
       <div className="space-y-4">
         <Card>

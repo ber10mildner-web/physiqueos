@@ -43,6 +43,9 @@ export function formatDate(iso: string, locale: string, opts: Intl.DateTimeForma
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+/** How many days ahead food can be planned / logged. */
+export const PLAN_AHEAD_DAYS = 14;
+
 /** Share of the day (0–1) that has passed in a time zone. */
 export function dayFractionIn(timeZone: string, now: Date = new Date()): number {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIME_ZONE, hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(now);

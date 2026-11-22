@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 import Link from "next/link";
 
 export function cx(...classes: (string | false | null | undefined)[]) {
@@ -35,8 +35,12 @@ export function PageHeader({ title, subtitle, action, back }: { title: string; s
   );
 }
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cx("animate-fade-up rounded-3xl border border-line bg-surface p-4", className)}>{children}</section>;
+export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
+  return (
+    <section className={cx("animate-fade-up rounded-3xl border border-line bg-surface p-4", className)} style={style}>
+      {children}
+    </section>
+  );
 }
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {

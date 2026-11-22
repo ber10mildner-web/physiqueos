@@ -19,6 +19,7 @@ const de = {
     close: "Schließen",
     today: "Heute",
     yesterday: "Gestern",
+    tomorrow: "Morgen",
     optional: "optional",
     unknown: "unbekannt",
     loading: "Lädt …",

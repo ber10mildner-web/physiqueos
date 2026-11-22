@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FOOD_ICON, foodIcon } from "./food-icon";
+import { foodIcon, foodInitial } from "./food-icon";
 
 describe("foodIcon", () => {
   it.each([
@@ -19,10 +19,17 @@ describe("foodIcon", () => {
     ["Chili con Carne", "🍲"],
     ["Eier", "🥚"],
     ["Omega 3 Kapseln", "💊"],
+    ["Burger Gurken", "🥒"],
+    ["Datteln entsteint", "🌴"],
+    ["Zimt, gemahlen", "🧂"],
+    ["Electrolyte Powder", "💧"],
+    ["Flohsamenschalen", "🌾"],
+    ["Cheeseburger", "🍔"],
   ])("%s → %s", (name, icon) => expect(foodIcon(name)).toBe(icon));
 
-  it("falls back to a plate, or a pot for recipes", () => {
-    expect(foodIcon("Xyz")).toBe(DEFAULT_FOOD_ICON);
+  it("gives no picture rather than a wrong one (initial instead), a pot for recipes", () => {
+    expect(foodIcon("Xyz")).toBeNull();
+    expect(foodInitial("  ägyptisches Brot")).toBe("Ä");
     expect(foodIcon("Omas Spezial", "recipe")).toBe("🥘");
   });
 });
