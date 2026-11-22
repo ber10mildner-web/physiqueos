@@ -149,6 +149,7 @@ const de = {
     editAmount: "Menge ändern",
     amount: "Menge (g)",
     deleteEntry: "Eintrag löschen",
+    moveTo: "Verschieben nach",
   },
   addFood: {
     title: "Lebensmittel hinzufügen",

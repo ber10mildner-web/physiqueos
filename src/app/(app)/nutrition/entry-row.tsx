@@ -7,7 +7,9 @@ import { scaleNutrients } from "@/lib/nutrition/calc";
 import { formatNumber } from "@/lib/format";
 import { FoodIcon } from "@/components/food-icon";
 import { Button, Input, cx } from "@/components/ui";
-import { deleteEntry, toggleFavorite, updateEntryAmount } from "./actions";
+import { useMeals } from "@/components/meals-context";
+import { MEAL_COLORS } from "@/lib/meal-colors";
+import { deleteEntry, moveEntry, toggleFavorite, updateEntryAmount } from "./actions";
 
 /** Width of the red delete button revealed by swiping left. */
 const REVEAL = 88;
@@ -20,6 +22,7 @@ export function EntryRow({
   favorite?: boolean;
 }) {
   const { t, locale } = useI18n();
+  const meals = useMeals();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(entry.amount_g));
   const [favorite, setFavorite] = useState(initialFavorite);
@@ -48,6 +51,13 @@ export function EntryRow({
         setRemoved(false);
         setDx(0);
       }
+    });
+  };
+  const move = (meal: DiaryEntry["meal"]) => {
+    setRemoved(true);
+    start(async () => {
+      const res = await moveEntry(entry.id, meal);
+      if (!res.ok) setRemoved(false);
     });
   };
   if (removed) return null;
@@ -214,6 +224,25 @@ export function EntryRow({
             <Trash2 className="size-4" />
           </Button>
         </form>
+      )}
+      {open && meals.slots.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+          <span className="mr-1 text-xs text-muted">{t.nutrition.moveTo}</span>
+          {meals.slots
+            .filter((s) => s.key !== entry.meal)
+            .map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                disabled={pending}
+                onClick={() => move(s.key)}
+                className="flex h-8 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs font-medium text-text transition hover:bg-surface-3 active:scale-[0.97]"
+              >
+                <span className="size-2 rounded-full" style={{ background: MEAL_COLORS[s.key] }} />
+                {meals.name(s.key)}
+              </button>
+            ))}
+        </div>
       )}
     </li>
   );

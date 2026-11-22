@@ -7,6 +7,7 @@ import { logFoodEntry } from "@/lib/data/mutations";
 import { addWater, copyEntries, setFoodFavorite } from "@/lib/data/tracking";
 import { getFood } from "@/lib/data";
 import { logRecipeEntry } from "@/lib/data/recipes";
+import { MEALS } from "@/lib/data/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -48,6 +49,17 @@ export async function updateEntryAmount(id: string, amountG: number): Promise<Ac
     .update({ amount_g: Math.round(amount.data * 10) / 10 })
     .eq("id", id)
     .eq("user_id", userId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Moves a diary entry to another meal of the same day (e.g. lunch → supplements). */
+export async function moveEntry(id: string, meal: string): Promise<ActionResult> {
+  const { supabase, userId } = await requireUser();
+  const slot = z.enum(MEALS as [string, ...string[]]).safeParse(meal);
+  if (!slot.success) return { ok: false, error: "invalid" };
+  const { error } = await supabase.from("diary_entries").update({ meal: slot.data }).eq("id", id).eq("user_id", userId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
