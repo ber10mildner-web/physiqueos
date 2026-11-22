@@ -681,13 +681,6 @@ const de = {
     unknown: "Nicht bewertet, weil für viele Lebensmittel Werte fehlen: {list}.",
     disclaimer: "Vergleich mit den DGE-Referenzwerten für Erwachsene. Nur eine Orientierung, kein ärztlicher Rat.",
   },
-  proteinMeals: {
-    title: "Eiweiß pro Mahlzeit",
-    badgeHint: "Ziel pro Mahlzeit: {target} g",
-    summary: "{reached} von {of} Mahlzeiten mit mindestens {target} g.",
-    basisWeight: "Etwa 0,4 g pro kg Körpergewicht pro Mahlzeit unterstützt den Muskelaufbau am besten.",
-    basisGoal: "Ein Viertel deines Tagesziels; mit einem Gewicht rechnet Sigma 0,4 g pro kg.",
-  },
   offline: {
     offline: "Offline",
     syncing: "Wird gesendet …",

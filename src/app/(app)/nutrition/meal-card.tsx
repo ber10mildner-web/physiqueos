@@ -7,7 +7,7 @@ import type { QuickPick } from "@/lib/nutrition/quick-picks";
 import { sumItems } from "@/lib/nutrition/calc";
 import { formatNumber } from "@/lib/format";
 import { addDays } from "@/lib/dates";
-import { Card, cx } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { EntryRow } from "./entry-row";
 import { CopyMealButton } from "./copy-meal-button";
 import { MealActions } from "./meal-actions";
@@ -21,7 +21,6 @@ export function MealCard({
   items,
   date,
   picks,
-  proteinTarget,
   favoriteIds,
   t,
   locale,
@@ -32,7 +31,6 @@ export function MealCard({
   items: DiaryEntry[];
   date: string;
   picks: QuickPick[];
-  proteinTarget: number;
   favoriteIds: Set<string>;
   t: Dictionary;
   locale: string;
@@ -40,7 +38,6 @@ export function MealCard({
   const totals = sumItems(items);
   const Icon = meal === "snack" && /suppl|vitamin|pill|kapsel/i.test(name) ? Pill : MEAL_ICON[meal];
   const p = totals.protein_g.value;
-  const main = meal !== "snack";
   const color = MEAL_COLORS[meal];
   const open = picks.filter((p) => !items.some((e) => (p.kind === "recipe" ? e.recipe_id : e.food_id) === p.id)).slice(0, 8);
   return (
@@ -55,14 +52,6 @@ export function MealCard({
             {formatNumber(totals.energy_kcal.value, locale)} kcal · {t.nutrientShort.protein_g} {formatNumber(p, locale)} · {t.nutrientShort.carbs_g} {formatNumber(totals.carbs_g.value, locale)} · {t.nutrientShort.fat_g} {formatNumber(totals.fat_g.value, locale)}
           </p>
         </div>
-        {main && items.length > 0 && (
-          <span
-            className={cx("num shrink-0 rounded-full px-2 py-1 text-[11px] font-medium", p >= proteinTarget ? "bg-protein/15 text-protein" : "bg-surface-2 text-muted")}
-            title={fmt(t.proteinMeals.badgeHint, { target: proteinTarget })}
-          >
-            {formatNumber(p, locale)}/{proteinTarget} g P
-          </span>
-        )}
       </div>
       {items.length > 0 && (
         <ul className="divide-y divide-line">
