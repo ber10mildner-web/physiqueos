@@ -678,13 +678,6 @@ const en: Dictionary = {
     unknown: "Not judged because many foods have no values: {list}.",
     disclaimer: "Compared with the DGE reference values for adults. Guidance only, not medical advice.",
   },
-  proteinMeals: {
-    title: "Protein per meal",
-    badgeHint: "Target per meal: {target} g",
-    summary: "{reached} of {of} meals with at least {target} g.",
-    basisWeight: "About 0.4 g per kg body weight per meal supports muscle growth best.",
-    basisGoal: "A quarter of your daily goal; with a weight Sigma uses 0.4 g per kg.",
-  },
   offline: {
     offline: "Offline",
     syncing: "Sending …",

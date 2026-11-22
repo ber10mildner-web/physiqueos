@@ -2,13 +2,12 @@ import Link from "next/link";
 import { ensureRoutines } from "@/lib/data/routines";
 import { BookOpen, ChevronRight, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
-import { getDiary, getGoalOn, getLatestWeight, getLoggedDates, getProfile } from "@/lib/data";
+import { getDiary, getGoalOn, getLoggedDates, getProfile } from "@/lib/data";
 import { getQuickPicks, getWater } from "@/lib/data/tracking";
 import { getToday } from "@/lib/auth";
 import { PLAN_AHEAD_DAYS, addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
 import { rankForMeal } from "@/lib/nutrition/quick-picks";
-import { proteinPerMealTarget } from "@/lib/nutrition/protein-meals";
 import { mealName, mealSlotsOf, visibleMeals } from "@/lib/nutrition/meal-slots";
 import { Card, Page, PageHeader, buttonClass } from "@/components/ui";
 import { DaySummary } from "@/components/day-summary";
@@ -17,7 +16,6 @@ import { WaterCard } from "./water-card";
 import { CopyMealButton } from "./copy-meal-button";
 import { MealCard } from "./meal-card";
 import { WeekStrip } from "./week-strip";
-import { ProteinMeals } from "./protein-meals";
 
 export default async function NutritionPage({ searchParams }: PageProps<"/nutrition">) {
   const { t, locale } = await getI18n();
@@ -27,19 +25,17 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const date = isIsoDate(sp.date) && sp.date <= lastDay ? sp.date : today;
   await ensureRoutines(today);
   const monday = startOfWeek(date);
-  const [entries, goal, water, profile, picks, logged, weight] = await Promise.all([
+  const [entries, goal, water, profile, picks, logged] = await Promise.all([
     getDiary(date),
     getGoalOn(date),
     getWater(date),
     getProfile(),
     getQuickPicks(today),
     getLoggedDates(monday, addDays(monday, 6)),
-    getLatestWeight(),
   ]);
   const totals = sumItems(entries);
   const slots = mealSlotsOf(profile);
   const meals = visibleMeals(slots, new Set(entries.map((e) => e.meal)));
-  const proteinTarget = proteinPerMealTarget(weight?.weight_kg ?? null, goal?.protein_g ?? null);
   const favoriteIds = new Set(picks.filter((p) => p.favorite && p.kind === "food").map((p) => p.id));
   const label =
     date === today
@@ -83,18 +79,11 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
             items={entries.filter((e) => e.meal === meal)}
             date={date}
             picks={rankForMeal(picks, meal, 12)}
-            proteinTarget={proteinTarget}
             favoriteIds={favoriteIds}
             t={t}
             locale={locale}
           />
         ))}
-
-        {entries.length > 0 && (
-          <Card>
-            <ProteinMeals meals={meals.map((m) => ({ key: m, name: mealName(m, slots, t.meals) }))} entries={entries} target={proteinTarget} weightKnown={Boolean(weight)} t={t} locale={locale} />
-          </Card>
-        )}
 
         <Card>
           <WaterCard date={date} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} />
