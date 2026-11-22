@@ -3,7 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import type { FoodCandidate } from "@/lib/food-sources/types";
-import { MEALS, type MealSlot } from "@/lib/data/types";
+import type { MealSlot } from "@/lib/data/types";
+import { useMeals } from "@/components/meals-context";
+import { visibleMeals } from "@/lib/nutrition/meal-slots";
 import { Field, Input, Select, cx } from "@/components/ui";
 import { FoodSearch } from "./food-search";
 import { BarcodeTab } from "./barcode-tab";
@@ -32,6 +34,7 @@ export function AddFood({
   recipes: FoodCandidate[];
 }) {
   const { t } = useI18n();
+  const meals = useMeals();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [meal, setMeal] = useState<MealSlot>(initialMeal);
@@ -58,9 +61,9 @@ export function AddFood({
       <div className="grid grid-cols-2 gap-3">
         <Field label={t.addFood.meal}>
           <Select value={meal} onChange={(e) => setMeal(e.target.value as MealSlot)}>
-            {MEALS.map((m) => (
+            {visibleMeals(meals.slots, [initialMeal]).map((m) => (
               <option key={m} value={m}>
-                {t.meals[m]}
+                {meals.name(m)}
               </option>
             ))}
           </Select>

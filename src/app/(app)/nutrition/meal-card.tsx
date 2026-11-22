@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coffee, Cookie, Moon, Plus, Sun } from "lucide-react";
+import { Coffee, Cookie, Dumbbell, Moon, Pill, Plus, Sun, Zap } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n";
 import { fmt } from "@/lib/i18n";
 import type { DiaryEntry, MealSlot } from "@/lib/data/types";
@@ -12,11 +12,12 @@ import { EntryRow } from "./entry-row";
 import { CopyMealButton } from "./copy-meal-button";
 import { QuickAdd } from "./quick-add";
 
-const MEAL_ICON = { breakfast: Coffee, lunch: Sun, dinner: Moon, snack: Cookie } as const;
+const MEAL_ICON = { breakfast: Coffee, pre_workout: Zap, lunch: Sun, post_workout: Dumbbell, dinner: Moon, snack: Cookie } as const;
 
 /** One meal of the day: summary line, the foods with pictures, quick picks and add button. */
 export function MealCard({
   meal,
+  name,
   items,
   date,
   picks,
@@ -26,6 +27,8 @@ export function MealCard({
   locale,
 }: {
   meal: MealSlot;
+  /** The user's name for this meal. */
+  name: string;
   items: DiaryEntry[];
   date: string;
   picks: QuickPick[];
@@ -35,7 +38,7 @@ export function MealCard({
   locale: string;
 }) {
   const totals = sumItems(items);
-  const Icon = MEAL_ICON[meal];
+  const Icon = meal === "snack" && /suppl|vitamin|pill|kapsel/i.test(name) ? Pill : MEAL_ICON[meal];
   const p = totals.protein_g.value;
   const main = meal !== "snack";
   return (
@@ -45,7 +48,7 @@ export function MealCard({
           <Icon className="size-5" strokeWidth={1.9} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-[17px] leading-tight font-semibold">{t.meals[meal]}</h2>
+          <h2 className="text-[17px] leading-tight font-semibold">{name}</h2>
           <p className="num mt-0.5 truncate text-[13px] text-muted">
             {formatNumber(totals.energy_kcal.value, locale)} kcal · {t.nutrientShort.protein_g} {formatNumber(p, locale)} · {t.nutrientShort.carbs_g} {formatNumber(totals.carbs_g.value, locale)} · {t.nutrientShort.fat_g} {formatNumber(totals.fat_g.value, locale)}
           </p>
@@ -71,7 +74,7 @@ export function MealCard({
         <Link
             href={`/nutrition/add?date=${date}&meal=${meal}`}
             className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-surface-2 text-sm font-medium text-text transition hover:bg-surface-3 active:scale-[0.98]"
-            aria-label={fmt(t.nutrition.addTo, { meal: t.meals[meal] })}
+            aria-label={fmt(t.nutrition.addTo, { meal: name })}
           >
             <Plus className="size-4 text-accent" /> {t.quick.search}
         </Link>

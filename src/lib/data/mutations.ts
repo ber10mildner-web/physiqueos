@@ -8,7 +8,7 @@ import type { FoodCandidate } from "@/lib/food-sources/types";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-export const mealSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
+export const mealSchema = z.enum(["breakfast", "pre_workout", "lunch", "post_workout", "dinner", "snack"]);
 export const dateSchema = z.string().refine(isIsoDate, "invalid date");
 
 export const candidateSchema = z.object({

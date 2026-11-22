@@ -93,7 +93,9 @@ const de = {
   },
   meals: {
     breakfast: "Frühstück",
+    pre_workout: "Pre-Meal",
     lunch: "Mittagessen",
+    post_workout: "Post-Meal",
     dinner: "Abendessen",
     snack: "Snacks",
   },
@@ -594,6 +596,16 @@ const de = {
     countsInDiary: "zählt in Ernährung",
     auto: "auto",
   },
+  mealSetup: {
+    title: "Mahlzeiten",
+    hint: "Wähle, welche Mahlzeiten du siehst, in welcher Reihenfolge und wie sie heißen. Pre- und Post-Meal sind für das Essen vor und nach dem Training.",
+    namePlaceholder: "Name",
+    show: "Anzeigen",
+    up: "Nach oben",
+    down: "Nach unten",
+    atLeastOne: "Mindestens eine Mahlzeit muss an sein.",
+    hiddenNote: "Ausgeblendete Mahlzeiten mit Einträgen erscheinen trotzdem an dem Tag, damit nichts verloren geht.",
+  },
   quick: {
     title: "Schnell eintragen",
     logNow: "eintragen",
@@ -667,7 +679,7 @@ const de = {
   proteinMeals: {
     title: "Eiweiß pro Mahlzeit",
     badgeHint: "Ziel pro Mahlzeit: {target} g",
-    summary: "{reached} von 3 Hauptmahlzeiten mit mindestens {target} g.",
+    summary: "{reached} von {of} Mahlzeiten mit mindestens {target} g.",
     basisWeight: "Etwa 0,4 g pro kg Körpergewicht pro Mahlzeit unterstützt den Muskelaufbau am besten.",
     basisGoal: "Ein Viertel deines Tagesziels; mit einem Gewicht rechnet Sigma 0,4 g pro kg.",
   },

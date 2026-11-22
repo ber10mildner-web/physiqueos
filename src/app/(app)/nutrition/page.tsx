@@ -9,7 +9,7 @@ import { addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
 import { rankForMeal } from "@/lib/nutrition/quick-picks";
 import { proteinPerMealTarget } from "@/lib/nutrition/protein-meals";
-import { MEALS } from "@/lib/data/types";
+import { mealName, mealSlotsOf, visibleMeals } from "@/lib/nutrition/meal-slots";
 import { Card, Page, PageHeader, buttonClass } from "@/components/ui";
 import { DaySummary } from "@/components/day-summary";
 import { NutrientDetails } from "./nutrient-details";
@@ -36,6 +36,8 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
     getLatestWeight(),
   ]);
   const totals = sumItems(entries);
+  const slots = mealSlotsOf(profile);
+  const meals = visibleMeals(slots, new Set(entries.map((e) => e.meal)));
   const proteinTarget = proteinPerMealTarget(weight?.weight_kg ?? null, goal?.protein_g ?? null);
   const favoriteIds = new Set(picks.filter((p) => p.favorite && p.kind === "food").map((p) => p.id));
   const label =
@@ -66,10 +68,11 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
           </div>
         )}
 
-        {MEALS.map((meal) => (
+        {meals.map((meal) => (
           <MealCard
             key={meal}
             meal={meal}
+            name={mealName(meal, slots, t.meals)}
             items={entries.filter((e) => e.meal === meal)}
             date={date}
             picks={rankForMeal(picks, meal, 12)}
@@ -82,7 +85,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
 
         {entries.length > 0 && (
           <Card>
-            <ProteinMeals entries={entries} target={proteinTarget} weightKnown={Boolean(weight)} t={t} locale={locale} />
+            <ProteinMeals meals={meals.map((m) => ({ key: m, name: mealName(m, slots, t.meals) }))} entries={entries} target={proteinTarget} weightKnown={Boolean(weight)} t={t} locale={locale} />
           </Card>
         )}
 

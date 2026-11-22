@@ -2,12 +2,14 @@
 import { useState, useTransition } from "react";
 import { Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
+import { useMeals } from "@/components/meals-context";
 import { fmt } from "@/lib/i18n";
 import type { MealSlot } from "@/lib/data/types";
 import { copyMeal } from "./actions";
 
 export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; toDate: string; meal: MealSlot | null }) {
   const { t } = useI18n();
+  const meals = useMeals();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   return (
@@ -24,7 +26,7 @@ export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; t
         }
       >
         <Copy className="size-3.5" />
-        {meal ? fmt(t.tracking.copyMealYesterday, { meal: t.meals[meal] }) : t.tracking.copyDayYesterday}
+        {meal ? fmt(t.tracking.copyMealYesterday, { meal: meals.name(meal) }) : t.tracking.copyDayYesterday}
       </button>
       {msg && <span className="text-xs text-faint">{msg}</span>}
     </span>

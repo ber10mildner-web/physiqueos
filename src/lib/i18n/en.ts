@@ -90,7 +90,9 @@ const en: Dictionary = {
   },
   meals: {
     breakfast: "Breakfast",
+    pre_workout: "Pre-workout meal",
     lunch: "Lunch",
+    post_workout: "Post-workout meal",
     dinner: "Dinner",
     snack: "Snacks",
   },
@@ -591,6 +593,16 @@ const en: Dictionary = {
     countsInDiary: "counts in nutrition",
     auto: "auto",
   },
+  mealSetup: {
+    title: "Meals",
+    hint: "Choose which meals you see, their order and their names. Pre- and post-workout meals are for food before and after training.",
+    namePlaceholder: "Name",
+    show: "Show",
+    up: "Move up",
+    down: "Move down",
+    atLeastOne: "At least one meal must stay on.",
+    hiddenNote: "Hidden meals that have entries still show on that day, so nothing gets lost.",
+  },
   quick: {
     title: "Quick add",
     logNow: "log now",
@@ -664,7 +676,7 @@ const en: Dictionary = {
   proteinMeals: {
     title: "Protein per meal",
     badgeHint: "Target per meal: {target} g",
-    summary: "{reached} of 3 main meals with at least {target} g.",
+    summary: "{reached} of {of} meals with at least {target} g.",
     basisWeight: "About 0.4 g per kg body weight per meal supports muscle growth best.",
     basisGoal: "A quarter of your daily goal; with a weight Sigma uses 0.4 g per kg.",
   },

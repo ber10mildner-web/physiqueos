@@ -45,6 +45,8 @@ Weekly review: call get_period_summary for the last 7 days (and optionally the 7
 
 Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
+Meals: slots are breakfast, pre_workout, lunch, post_workout, dinner, snack. The user can rename and hide them (get_overview → profile.meal_slots; e.g. "snack" may be called "Supplemente"); use their names when talking to them.
+
 Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
 
 Cardio machine photos: when the user asks you to read their machine/Stairmaster photos, call list_cardio_photos, look at each with get_cardio_photo, read only values that are visible on the display (time, level, floors, steps, kcal), and save them with set_cardio_machine_data. Sigma then combines them with the Garmin data into a best calorie estimate ("kcal_estimate" in get_training).
@@ -52,7 +54,7 @@ Cardio machine photos: when the user asks you to read their machine/Stairmaster 
 Skin and medication: log_skin and log_medication record what the user tells you. You may point out patterns, but never give medical advice or suggest changing medication; refer to a doctor.`;
 
 const date = z.string().refine(isIsoDate, "YYYY-MM-DD");
-const meal = z.enum(["breakfast", "lunch", "dinner", "snack"]);
+const meal = z.enum(["breakfast", "pre_workout", "lunch", "post_workout", "dinner", "snack"]);
 
 type Content = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
 const json = (value: unknown): { content: Content[] } => ({ content: [{ type: "text", text: JSON.stringify(value, null, 1) }] });

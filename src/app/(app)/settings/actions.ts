@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireUser, getToday } from "@/lib/auth";
 import { isIsoDate } from "@/lib/dates";
 import { isLocale, LOCALE_COOKIE } from "@/lib/i18n";
+import { parseMealSlots } from "@/lib/nutrition/meal-slots";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -87,4 +88,15 @@ export async function setLocale(locale: string): Promise<void> {
   const { supabase, userId } = await requireUser();
   await supabase.from("profiles").update({ locale }).eq("id", userId);
   revalidatePath("/", "layout");
+}
+
+/** Saves which meals the user sees, their order and own names. */
+export async function saveMealSlots(slots: { key: string; name: string | null }[]): Promise<ActionResult> {
+  const { supabase, userId } = await requireUser();
+  if (!Array.isArray(slots) || slots.length === 0 || slots.length > 10) return { ok: false, error: "invalid" };
+  const parsed = parseMealSlots(slots);
+  const { error } = await supabase.from("profiles").update({ meal_slots: parsed }).eq("id", userId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
