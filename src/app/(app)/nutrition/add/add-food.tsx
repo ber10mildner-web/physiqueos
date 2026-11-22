@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import type { MealSlot } from "@/lib/data/types";
+import { PLAN_AHEAD_DAYS, addDays } from "@/lib/dates";
 import { useMeals } from "@/components/meals-context";
 import { visibleMeals } from "@/lib/nutrition/meal-slots";
 import { Field, Input, Select, cx } from "@/components/ui";
@@ -69,7 +70,7 @@ export function AddFood({
           </Select>
         </Field>
         <Field label={t.addFood.date}>
-          <Input type="date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)} />
+          <Input type="date" value={date} max={addDays(today, PLAN_AHEAD_DAYS)} onChange={(e) => e.target.value && setDate(e.target.value)} />
         </Field>
       </div>
 

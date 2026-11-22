@@ -5,7 +5,7 @@ import { addDays, formatDate, startOfWeek } from "@/lib/dates";
 import { cx } from "@/components/ui";
 
 /** Monday–Sunday strip: tap a day to open it; a dot marks days with entries. */
-export function WeekStrip({ date, today, logged, locale, t }: { date: string; today: string; logged: Set<string>; locale: string; t: Dictionary }) {
+export function WeekStrip({ date, today, lastDay, logged, locale, t }: { date: string; today: string; lastDay: string; logged: Set<string>; locale: string; t: Dictionary }) {
   const monday = startOfWeek(date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const nextWeek = addDays(monday, 7);
@@ -17,12 +17,12 @@ export function WeekStrip({ date, today, logged, locale, t }: { date: string; to
       <ol className="grid flex-1 grid-cols-7 gap-0.5">
         {days.map((d) => {
           const active = d === date;
-          const future = d > today;
+          const future = d > lastDay;
           const label = formatDate(d, locale, { weekday: "narrow" });
           const inner = (
             <>
               <span className={cx("text-[11px]", active ? "text-accent-ink/70" : "text-faint")}>{label}</span>
-              <span className={cx("num text-[15px] font-semibold", d === today && !active && "text-accent")}>{Number(d.slice(8))}</span>
+              <span className={cx("num text-[15px] font-semibold", d === today && !active && "text-accent", d > today && !active && "text-muted")}>{Number(d.slice(8))}</span>
               <span className={cx("size-1.5 rounded-full", logged.has(d) ? (active ? "bg-accent-ink" : "bg-accent") : "bg-surface-3")} />
             </>
           );
@@ -44,7 +44,7 @@ export function WeekStrip({ date, today, logged, locale, t }: { date: string; to
           );
         })}
       </ol>
-      {nextWeek <= today ? (
+      {nextWeek <= lastDay ? (
         <Link href={`/nutrition?date=${nextWeek}`} className="grid h-14 w-7 shrink-0 place-items-center rounded-xl text-faint hover:text-text" aria-label={t.week.next}>
           <ChevronRight className="size-4" />
         </Link>
