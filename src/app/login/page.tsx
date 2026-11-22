@@ -1,12 +1,14 @@
 import { getI18n } from "@/lib/i18n/server";
 import { LoginForm } from "./login-form";
 import { Logo } from "@/components/logo";
+import { ClearOfflinePages } from "@/components/offline-sync";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { t } = await getI18n();
   const { error, confirmed } = await searchParams;
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-6 py-12">
+      <ClearOfflinePages />
       <div className="mb-10 animate-fade-up">
         <Logo className="mb-6 size-14" />
         <h1 className="text-3xl font-semibold tracking-tight">{t.auth.title}</h1>

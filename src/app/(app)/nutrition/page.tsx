@@ -1,31 +1,43 @@
 import Link from "next/link";
 import { ensureRoutines } from "@/lib/data/routines";
-import { ChevronLeft, ChevronRight, Plus, ScanBarcode } from "lucide-react";
+import { BookOpen, ChevronRight, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
-import { fmt } from "@/lib/i18n";
-import { getDiary, getGoalOn, getProfile } from "@/lib/data";
-import { getWater } from "@/lib/data/tracking";
+import { getDiary, getGoalOn, getLatestWeight, getLoggedDates, getProfile } from "@/lib/data";
+import { getQuickPicks, getWater } from "@/lib/data/tracking";
 import { getToday } from "@/lib/auth";
-import { addDays, formatDate, isIsoDate } from "@/lib/dates";
+import { addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
+import { rankForMeal } from "@/lib/nutrition/quick-picks";
+import { proteinPerMealTarget } from "@/lib/nutrition/protein-meals";
 import { MEALS } from "@/lib/data/types";
-import { formatNumber } from "@/lib/format";
 import { Card, Page, PageHeader, buttonClass } from "@/components/ui";
 import { DaySummary } from "@/components/day-summary";
-import { EntryRow } from "./entry-row";
 import { NutrientDetails } from "./nutrient-details";
 import { WaterCard } from "./water-card";
 import { CopyMealButton } from "./copy-meal-button";
-import { BookOpen } from "lucide-react";
+import { MealCard } from "./meal-card";
+import { WeekStrip } from "./week-strip";
+import { ProteinMeals } from "./protein-meals";
 
 export default async function NutritionPage({ searchParams }: PageProps<"/nutrition">) {
   const { t, locale } = await getI18n();
   const today = await getToday();
   const sp = await searchParams;
-  const date = isIsoDate(sp.date) ? sp.date : today;
+  const date = isIsoDate(sp.date) && sp.date <= today ? sp.date : today;
   await ensureRoutines(today);
-  const [entries, goal, water, profile] = await Promise.all([getDiary(date), getGoalOn(date), getWater(date), getProfile()]);
+  const monday = startOfWeek(date);
+  const [entries, goal, water, profile, picks, logged, weight] = await Promise.all([
+    getDiary(date),
+    getGoalOn(date),
+    getWater(date),
+    getProfile(),
+    getQuickPicks(today),
+    getLoggedDates(monday, addDays(monday, 6)),
+    getLatestWeight(),
+  ]);
   const totals = sumItems(entries);
+  const proteinTarget = proteinPerMealTarget(weight?.weight_kg ?? null, goal?.protein_g ?? null);
+  const favoriteIds = new Set(picks.filter((p) => p.favorite && p.kind === "food").map((p) => p.id));
   const label =
     date === today ? t.common.today : date === addDays(today, -1) ? t.common.yesterday : formatDate(date, locale, { weekday: "long", day: "numeric", month: "long" });
 
@@ -33,6 +45,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
     <Page>
       <PageHeader
         title={t.nutrition.title}
+        subtitle={label}
         action={
           <Link href={`/nutrition/add?date=${date}&tab=scan`} className={buttonClass("secondary", "sm")} aria-label={t.dashboard.scan}>
             <ScanBarcode className="size-4" />
@@ -40,57 +53,38 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
           </Link>
         }
       />
-      <div className="mb-4 flex items-center justify-between rounded-2xl bg-surface p-1">
-        <Link href={`/nutrition?date=${addDays(date, -1)}`} className="grid size-10 place-items-center rounded-xl text-muted hover:bg-surface-2" aria-label={t.common.previousDay}>
-          <ChevronLeft className="size-5" />
-        </Link>
-        <span className="font-medium">{label}</span>
-        {date < today ? (
-          <Link href={`/nutrition?date=${addDays(date, 1)}`} className="grid size-10 place-items-center rounded-xl text-muted hover:bg-surface-2" aria-label={t.common.nextDay}>
-            <ChevronRight className="size-5" />
-          </Link>
-        ) : (
-          <span className="size-10" />
-        )}
-      </div>
+      <WeekStrip date={date} today={today} logged={logged} locale={locale} t={t} />
 
       <div className="space-y-4">
         <Card>
           <DaySummary totals={totals} goal={goal} t={t} locale={locale} />
         </Card>
 
-        {MEALS.map((meal) => {
-          const items = entries.filter((e) => e.meal === meal);
-          const kcal = sumItems(items).energy_kcal.value;
-          return (
-            <Card key={meal} className="p-0">
-              <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                <h2 className="font-semibold">{t.meals[meal]}</h2>
-                <div className="flex items-center gap-2">
-                  {items.length > 0 && <span className="num text-sm text-muted">{formatNumber(kcal, locale)} kcal</span>}
-                  <Link
-                    href={`/nutrition/add?date=${date}&meal=${meal}`}
-                    className="grid size-8 place-items-center rounded-full bg-surface-3 text-accent hover:brightness-110"
-                    aria-label={fmt(t.nutrition.addTo, { meal: t.meals[meal] })}
-                  >
-                    <Plus className="size-4" />
-                  </Link>
-                </div>
-              </div>
-              {items.length > 0 ? (
-                <ul className="divide-y divide-line border-t border-line">
-                  {items.map((e) => (
-                    <EntryRow key={e.id} entry={e} />
-                  ))}
-                </ul>
-              ) : (
-                <div className="px-4 pb-4">
-                  <CopyMealButton fromDate={addDays(date, -1)} toDate={date} meal={meal} />
-                </div>
-              )}
-            </Card>
-          );
-        })}
+        {entries.length === 0 && (
+          <div className="flex justify-center">
+            <CopyMealButton fromDate={addDays(date, -1)} toDate={date} meal={null} />
+          </div>
+        )}
+
+        {MEALS.map((meal) => (
+          <MealCard
+            key={meal}
+            meal={meal}
+            items={entries.filter((e) => e.meal === meal)}
+            date={date}
+            picks={rankForMeal(picks, meal, 12)}
+            proteinTarget={proteinTarget}
+            favoriteIds={favoriteIds}
+            t={t}
+            locale={locale}
+          />
+        ))}
+
+        {entries.length > 0 && (
+          <Card>
+            <ProteinMeals entries={entries} target={proteinTarget} weightKnown={Boolean(weight)} t={t} locale={locale} />
+          </Card>
+        )}
 
         <Card>
           <WaterCard date={date} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} />

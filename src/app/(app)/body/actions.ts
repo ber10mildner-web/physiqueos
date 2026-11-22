@@ -21,6 +21,13 @@ export async function saveWeight(formData: FormData): Promise<ActionResult> {
   return res;
 }
 
+/** Same as saveWeight, for the offline queue (plain values instead of a form). */
+export async function saveWeightValues(input: { date: string; weight_kg: number }): Promise<ActionResult> {
+  const res = await upsertWeight({ date: input.date, weight_kg: input.weight_kg, note: null }, await requireUser());
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
+}
+
 export async function deleteWeight(id: string): Promise<ActionResult> {
   const { supabase, userId } = await requireUser();
   const { error } = await supabase.from("weight_entries").delete().eq("id", id).eq("user_id", userId);

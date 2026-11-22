@@ -44,6 +44,8 @@ export interface HealthValues {
   body_battery?: number;
   steps?: number;
   stress?: number;
+  active_kcal?: number;
+  bmr_kcal?: number;
 }
 
 /** Only values Garmin actually reported are returned; missing or negative "no data" markers are dropped. */
@@ -62,6 +64,8 @@ export function mapHealth(sleep: unknown, hrv: unknown, summary: unknown): Healt
   set("resting_hr", int(n(s?.restingHeartRate), 20, 200));
   set("steps", int(n(s?.totalSteps), 0, 200000));
   set("stress", int(n(s?.averageStressLevel), 0, 100));
+  set("active_kcal", int(n(s?.activeKilocalories), 0, 20000));
+  set("bmr_kcal", int(n(s?.bmrKilocalories), 500, 6000));
   set("body_battery", int(n(s?.bodyBatteryAtWakeTime) ?? n(s?.bodyBatteryHighestValue), 0, 100));
   return out;
 }

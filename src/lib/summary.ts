@@ -11,6 +11,7 @@ import { listCardio, listExercises, listWorkouts } from "@/lib/data/training";
 import { getHealthRange } from "@/lib/data/health";
 import { getMedicationLogs, getSkinRange } from "@/lib/data/wellbeing";
 import { withKcalEstimates } from "@/lib/cardio";
+import { burnForRange } from "@/lib/burn-data";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { addDays } from "@/lib/dates";
 import { dayNumber as dayNumberOf } from "@/lib/body/weight";
@@ -42,6 +43,10 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
     return { ...(alt ? g.alt! : g.base), alt_day: Boolean(alt) };
   };
 
+  const intake: Record<string, number> = {};
+  for (const e of entries) intake[e.entry_date] = (intake[e.entry_date] ?? 0) + (sumItems([e]).energy_kcal.value);
+  const burns = await burnForRange(from, to, intake, ctx);
+
   const days: Record<string, unknown>[] = [];
   const loggedDays: ReturnType<typeof sumItems>[] = [];
   for (let d = from; dayNumberOf(d) <= dayNumberOf(to); d = addDays(d, 1)) {
@@ -58,6 +63,8 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
       fiber_g: r1(totals.fiber_g.value),
       fiber_data_for: `${totals.fiber_g.known}/${totals.fiber_g.of} entries`,
       water_ml: water[d] ?? 0,
+      estimated_burn_kcal: burns[d]?.total ?? null,
+      burn_basis: burns[d] ? `${burns[d]!.basis}: ${burns[d]!.parts.map((p) => `${p.key} ${p.kcal}`).join(", ")}` : "no profile/weight",
       goal: goalFor(d),
     });
   }

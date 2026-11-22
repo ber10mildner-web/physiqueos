@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // The service worker must never be cached by the browser, or updates would not arrive.
+  async headers() {
+    return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }] }];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.openfoodfacts.org" },

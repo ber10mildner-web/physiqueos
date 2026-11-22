@@ -226,3 +226,11 @@ export async function getGoalsBetween(from: string, to: string, ctx?: Ctx): Prom
   check(error, !ctx);
   return [...(first ? [first] : []), ...((data ?? []) as GoalRow[]).map((r) => resolveGoal(r, r.valid_from))];
 }
+
+/** Dates in a range that have at least one diary entry. */
+export async function getLoggedDates(from: string, to: string, ctx?: Ctx): Promise<Set<string>> {
+  const { supabase, userId } = await ctxOr(ctx);
+  const { data, error } = await supabase.from("diary_entries").select("entry_date").eq("user_id", userId).gte("entry_date", from).lte("entry_date", to).limit(2000);
+  check(error, !ctx);
+  return new Set((data ?? []).map((r) => r.entry_date as string));
+}

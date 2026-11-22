@@ -42,3 +42,22 @@ export function formatDate(iso: string, locale: string, opts: Intl.DateTimeForma
   const [y, m, d] = iso.split("-").map(Number);
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }
+
+/** Share of the day (0–1) that has passed in a time zone. */
+export function dayFractionIn(timeZone: string, now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIME_ZONE, hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(now);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return (get("hour") * 60 + get("minute")) / 1440;
+}
+
+/** ISO weekday: 1 = Monday … 7 = Sunday. */
+export function weekdayOf(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return wd === 0 ? 7 : wd;
+}
+
+/** Monday of the week that contains `iso`. */
+export function startOfWeek(iso: string): string {
+  return addDays(iso, 1 - weekdayOf(iso));
+}

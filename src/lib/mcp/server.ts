@@ -41,7 +41,7 @@ NEVER invent nutritional values. Use values from search_foods / lookup_barcode r
 
 Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then "basic" for whole/unprocessed foods like fruit, vegetables, rice or eggs, then Open Food Facts for branded products, then USDA for anything else), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
 
-Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal, protein, fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10) and per-exercise feelings (exercise_notes in get_training), skin log and medication intake. Be concrete and honest about missing data.
+Weekly review: call get_period_summary for the last 7 days (and optionally the 7 days before for comparison) and list_progress_photos / get_progress_photo for visual progress. Comment on calories vs goal and vs the estimated daily burn (estimated_burn_kcal, an estimate), protein (also per meal), fibre, micronutrients with enough data, weight trend (7-day average, not single weigh-ins), training volume and records, sleep/recovery, the user's subjective workout ratings (feeling/energy/effort 1-10) and per-exercise feelings (exercise_notes in get_training), skin log and medication intake. Be concrete and honest about missing data.
 
 Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
@@ -244,7 +244,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
       })),
       cardio: cardio.map(cardioOut),
       cardio_routines: templates.map((t) => ({ name: t.name, activity: t.activity, duration_min: t.duration_min, incline_pct: t.incline_pct, speed_kmh: t.speed_kmh, avg_hr: t.avg_hr, kcal: t.kcal, effort: t.effort, auto_weekdays_iso: t.auto_days })),
-      plans: plans.map((p) => ({ name: p.name, exercises: p.exercises.map((e) => ({ exercise: name.get(e.exercise_id), sets: e.target_sets, reps: `${e.rep_min}-${e.rep_max}` })) })),
+      plans: plans.map((p) => ({ name: p.name, planned_weekdays_iso: p.schedule_days, exercises: p.exercises.map((e) => ({ exercise: name.get(e.exercise_id), sets: e.target_sets, reps: `${e.rep_min}-${e.rep_max}` })) })),
       exercise_library: exercises.map((e) => ({ exercise_id: e.id, name: e.name_de, name_en: e.name_en, muscle_group: e.muscle_group, equipment: e.equipment })),
     });
   });
