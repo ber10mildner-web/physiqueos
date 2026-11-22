@@ -607,7 +607,9 @@ const en: Dictionary = {
   quick: {
     title: "Quick add",
     logNow: "log now",
-    search: "Search, scan or recipe",
+    search: "Add food",
+    withClaude: "Claude",
+    withClaudeHint: "Log with Claude: send a recipe photo or describe the dish, Claude looks up the ingredients and logs everything",
   },
   week: {
     title: "Weekly review",
