@@ -13,6 +13,8 @@ import { deleteEntry, moveEntry, toggleFavorite, updateEntryAmount } from "./act
 
 /** Width of the red delete button revealed by swiping left. */
 const REVEAL = 88;
+/** Holding a row this long (without moving) opens "move to". */
+const LONG_PRESS_MS = 450;
 
 export function EntryRow({
   entry,
@@ -24,6 +26,7 @@ export function EntryRow({
   const { t, locale } = useI18n();
   const meals = useMeals();
   const [open, setOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [amount, setAmount] = useState(String(entry.amount_g));
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pending, start] = useTransition();
@@ -41,8 +44,13 @@ export function EntryRow({
     base: number;
     active: boolean;
   } | null>(null);
-  /** Time of the last swipe: the click that may follow it must not open the row. */
+  /** Time of the last swipe or long press: the click that may follow it must not open the row. */
   const swipedAt = useRef(0);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPress = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    pressTimer.current = null;
+  };
   const remove = () => {
     setRemoved(true);
     start(async () => {
@@ -82,7 +90,11 @@ export function EntryRow({
             "relative bg-surface select-none",
             !dragging && "transition-transform duration-200 ease-out",
           )}
-          style={{ transform: `translateX(${dx}px)`, touchAction: "pan-y" }}
+          style={{
+            transform: `translateX(${dx}px)`,
+            touchAction: "pan-y",
+            WebkitTouchCallout: "none",
+          }}
           onPointerDown={(e) => {
             if (e.pointerType === "mouse" && e.button !== 0) return;
             drag.current = {
@@ -91,12 +103,24 @@ export function EntryRow({
               base: dx,
               active: false,
             };
+            cancelPress();
+            if (dx === 0 && meals.slots.length > 1)
+              pressTimer.current = setTimeout(() => {
+                pressTimer.current = null;
+                drag.current = null;
+                swipedAt.current = Date.now();
+                navigator.vibrate?.(15);
+                setOpen(false);
+                setMoving(true);
+              }, LONG_PRESS_MS);
           }}
+          onContextMenu={(e) => e.preventDefault()}
           onPointerMove={(e) => {
             const d = drag.current;
             if (!d) return;
             const mx = e.clientX - d.x;
             const my = e.clientY - d.y;
+            if (Math.abs(mx) > 8 || Math.abs(my) > 8) cancelPress();
             if (!d.active) {
               if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx))
                 return void (drag.current = null);
@@ -108,6 +132,7 @@ export function EntryRow({
             setDx(Math.max(-REVEAL * 1.8, Math.min(0, d.base + mx)));
           }}
           onPointerUp={() => {
+            cancelPress();
             const d = drag.current;
             drag.current = null;
             if (!d?.active) return;
@@ -117,6 +142,7 @@ export function EntryRow({
             else setDx(dx < -REVEAL / 2 ? -REVEAL : 0);
           }}
           onPointerCancel={() => {
+            cancelPress();
             drag.current = null;
             setDragging(false);
             setDx(0);
@@ -128,6 +154,7 @@ export function EntryRow({
             onClick={() => {
               if (Date.now() - swipedAt.current < 400) return;
               if (dx !== 0) return setDx(0);
+              if (moving) return setMoving(false);
               setOpen(!open);
             }}
             aria-expanded={open}
@@ -226,6 +253,9 @@ export function EntryRow({
         </form>
       )}
       {open && meals.slots.length > 1 && (
+        <p className="-mt-1 px-4 pb-3 text-xs text-muted">{t.nutrition.moveHint}</p>
+      )}
+      {moving && meals.slots.length > 1 && (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
           <span className="mr-1 text-xs text-muted">{t.nutrition.moveTo}</span>
           {meals.slots

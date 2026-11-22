@@ -5,7 +5,7 @@ import type { FoodSource } from "@/lib/food-sources/types";
 
 export type MealSlot = "breakfast" | "pre_workout" | "lunch" | "post_workout" | "dinner" | "snack";
 /** Every meal slot Sigma knows, in the default order. Which ones a user sees: see meal-slots.ts. */
-export const MEALS: MealSlot[] = ["breakfast", "pre_workout", "lunch", "post_workout", "dinner", "snack"];
+export const MEALS: MealSlot[] = ["breakfast", "pre_workout", "post_workout", "lunch", "dinner", "snack"];
 /** A meal as the user set it up: which slot, and an optional own name (e.g. "Supplemente"). */
 export interface MealSetting {
   key: MealSlot;
