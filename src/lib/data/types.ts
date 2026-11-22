@@ -3,8 +3,14 @@ import type { ActivityLevel, Phase, Sex } from "@/lib/nutrition/energy";
 import type { GoalTargets } from "@/lib/nutrition/goal-days";
 import type { FoodSource } from "@/lib/food-sources/types";
 
-export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
-export const MEALS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
+export type MealSlot = "breakfast" | "pre_workout" | "lunch" | "post_workout" | "dinner" | "snack";
+/** Every meal slot Sigma knows, in the default order. Which ones a user sees: see meal-slots.ts. */
+export const MEALS: MealSlot[] = ["breakfast", "pre_workout", "lunch", "post_workout", "dinner", "snack"];
+/** A meal as the user set it up: which slot, and an optional own name (e.g. "Supplemente"). */
+export interface MealSetting {
+  key: MealSlot;
+  name: string | null;
+}
 export type PhotoPose = "front" | "side" | "back" | "other";
 export const POSES: PhotoPose[] = ["front", "side", "back", "other"];
 
@@ -17,6 +23,8 @@ export interface Profile {
   height_cm: number | null;
   activity_level: ActivityLevel | null;
   water_target_ml: number | null;
+  /** The user's meals in their order (null = default). */
+  meal_slots: MealSetting[] | null;
 }
 
 export interface NutritionGoal {

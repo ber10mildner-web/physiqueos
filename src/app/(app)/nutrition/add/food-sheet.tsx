@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { ExternalLink, Star, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
+import { useMeals } from "@/components/meals-context";
 import { fmt } from "@/lib/i18n";
 import { isBasicSourceId, type FoodCandidate } from "@/lib/food-sources/types";
 import type { MealSlot } from "@/lib/data/types";
@@ -37,6 +38,7 @@ export function FoodSheet({
   onLogged: () => void;
 }) {
   const { t, locale } = useI18n();
+  const meals = useMeals();
   const [amount, setAmount] = useState(String(initialAmount ?? food.serving_size_g ?? 100));
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -178,7 +180,7 @@ export function FoodSheet({
 
             {error && <div className="mt-3"><Notice tone="error">{error}</Notice></div>}
             <Button type="submit" className="mt-5 w-full" disabled={!valid || pending}>
-              {pending ? t.common.saving : (submitLabel ?? `${t.addFood.log} · ${t.meals[meal]}`)}
+              {pending ? t.common.saving : (submitLabel ?? `${t.addFood.log} · ${meals.name(meal)}`)}
             </Button>
             <div className="mt-3 flex items-center justify-between text-xs text-faint">
               <span>{attribution}</span>

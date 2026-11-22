@@ -5,6 +5,8 @@ import { getGoalOn, getLatestWeight, getProfile } from "@/lib/data";
 import { getToday, requireUser } from "@/lib/auth";
 import { Card, Page, PageHeader, SectionTitle, buttonClass } from "@/components/ui";
 import { ProfileForm } from "./profile-form";
+import { MealSlotsForm } from "./meal-slots-form";
+import { mealSlotsOf } from "@/lib/nutrition/meal-slots";
 import { GoalForm } from "./goal-form";
 import { LanguageSwitch } from "./language-switch";
 import { signOut } from "@/app/login/actions";
@@ -27,6 +29,10 @@ export default async function SettingsPage() {
         <Card>
           <SectionTitle>{t.settings.goals}</SectionTitle>
           <GoalForm profile={profile} latestWeightKg={weight?.weight_kg ?? null} goal={goal} today={today} />
+        </Card>
+        <Card>
+          <SectionTitle>{t.mealSetup.title}</SectionTitle>
+          <MealSlotsForm slots={mealSlotsOf(profile)} />
         </Card>
         <Card>
           <SectionTitle>{t.settings.profile}</SectionTitle>

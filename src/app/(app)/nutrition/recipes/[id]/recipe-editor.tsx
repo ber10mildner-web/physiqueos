@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import type { MealSlot, Recipe } from "@/lib/data/types";
-import { MEALS } from "@/lib/data/types";
+import { useMeals } from "@/components/meals-context";
 import { recipeNutrition, parseIngredientLine } from "@/lib/nutrition/recipe";
 import { hasRequiredNutrients, PRIMARY_NUTRIENTS } from "@/lib/nutrition/nutrients";
 import { formatNumber } from "@/lib/format";
@@ -63,7 +63,8 @@ export function RecipeEditor({ recipe, recent, favorites, today }: { recipe: Rec
   const [selected, setSelected] = useState<FoodCandidate | null>(null);
   const [status, setStatus] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const [logging, setLogging] = useState(false);
-  const [meal, setMeal] = useState<MealSlot>("lunch");
+  const meals = useMeals();
+  const [meal, setMeal] = useState<MealSlot>(meals.slots.some((s) => s.key === "lunch") ? "lunch" : meals.slots[0].key);
   const [dirty, setDirty] = useState(false);
 
   const cookedG = Number(cooked.replace(",", "."));
@@ -308,9 +309,9 @@ export function RecipeEditor({ recipe, recent, favorites, today }: { recipe: Rec
         {recipe && (
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <Select value={meal} onChange={(e) => setMeal(e.target.value as MealSlot)}>
-              {MEALS.map((m) => (
+              {meals.slots.map(({ key: m }) => (
                 <option key={m} value={m}>
-                  {t.meals[m]}
+                  {meals.name(m)}
                 </option>
               ))}
             </Select>

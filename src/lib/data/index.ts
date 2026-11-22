@@ -7,6 +7,7 @@ import "server-only";
 import { ctxOr, check, type Ctx } from "./core";
 import { sanitizeNutrients } from "@/lib/nutrition/nutrients";
 import { altTargets, targetsOn, type GoalRow } from "@/lib/nutrition/goal-days";
+import { parseMealSlots } from "@/lib/nutrition/meal-slots";
 import type { DiaryEntry, Food, NutritionGoal, Profile, ProgressPhoto, WeightEntry } from "./types";
 
 export type { Ctx };
@@ -17,11 +18,11 @@ export async function getProfile(ctx?: Ctx): Promise<Profile | null> {
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, locale, sex, birth_date, height_cm, activity_level, water_target_ml")
+    .select("id, display_name, locale, sex, birth_date, height_cm, activity_level, water_target_ml, meal_slots")
     .eq("id", userId)
     .maybeSingle();
   check(error, !ctx);
-  return data ? { ...data, height_cm: num(data.height_cm) } as Profile : null;
+  return data ? ({ ...data, height_cm: num(data.height_cm), meal_slots: data.meal_slots ? parseMealSlots(data.meal_slots) : null } as Profile) : null;
 }
 
 /** The goal in effect on `date` (latest valid_from <= date). */
