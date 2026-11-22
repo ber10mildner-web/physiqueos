@@ -147,6 +147,7 @@ const en: Dictionary = {
     amount: "Amount (g)",
     deleteEntry: "Delete entry",
     moveTo: "Move to",
+    moveHint: "Long-press to move",
   },
   addFood: {
     title: "Add food",

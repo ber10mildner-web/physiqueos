@@ -45,7 +45,7 @@ Weekly review: call get_period_summary for the last 7 days (and optionally the 7
 
 Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
-Meals: slots are breakfast, pre_workout, lunch, post_workout, dinner, snack. The user can rename and hide them (get_overview → profile.meal_slots; e.g. "snack" may be called "Supplemente"); use their names when talking to them.
+Meals: slots are breakfast, pre_workout, post_workout, lunch, dinner, snack. The user can rename and hide them (get_overview → profile.meal_slots; e.g. "snack" may be called "Supplemente"); use their names when talking to them.
 
 Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
 
