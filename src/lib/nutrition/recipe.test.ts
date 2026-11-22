@@ -21,12 +21,23 @@ describe("recipeNutrition", () => {
     expect(recipeNutrition(ingredients).per100g.energy_kcal).toBeCloseTo(131);
   });
 
-  it("marks nutrients unknown if any ingredient lacks them", () => {
+  it("sums micros over the ingredients that have them and reports coverage", () => {
     const r = recipeNutrition(ingredients, 800);
-    expect(r.unknown).toContain("fiber_g");
-    expect(r.unknown).toContain("vitamin_c_mg");
-    expect(r.per100g.fiber_g).toBeUndefined();
-    expect(r.unknown).not.toContain("energy_kcal");
+    // fibre known for 200 g + 300 g of 1000 g
+    expect(r.total.fiber_g).toBeCloseTo(6 + 4.5);
+    expect(r.per100g.fiber_g).toBeCloseTo((10.5 / 800) * 100);
+    expect(r.partial).toContainEqual({ key: "fiber_g", knownShare: 0.5 });
+    expect(r.partial).toContainEqual({ key: "vitamin_c_mg", knownShare: 0.5 });
+    expect(r.unknown).not.toContain("fiber_g");
+    expect(r.unknown).toContain("zinc_mg");
+    expect(r.partial.map((p) => p.key)).not.toContain("energy_kcal");
+  });
+
+  it("keeps energy and macros unknown if any ingredient lacks them", () => {
+    const r = recipeNutrition([...ingredients, { amount_g: 50, nutrients_per_100g: { energy_kcal: 100, fiber_g: 1 } }]);
+    expect(r.per100g.protein_g).toBeUndefined();
+    expect(r.unknown).toContain("protein_g");
+    expect(r.per100g.energy_kcal).toBeDefined();
   });
 
   it("handles an empty recipe", () => {
