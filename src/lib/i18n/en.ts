@@ -146,6 +146,7 @@ const en: Dictionary = {
     editAmount: "Change amount",
     amount: "Amount (g)",
     deleteEntry: "Delete entry",
+    moveTo: "Move to",
   },
   addFood: {
     title: "Add food",
