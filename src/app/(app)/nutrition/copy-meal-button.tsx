@@ -6,7 +6,7 @@ import { fmt } from "@/lib/i18n";
 import type { MealSlot } from "@/lib/data/types";
 import { copyMeal } from "./actions";
 
-export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; toDate: string; meal: MealSlot }) {
+export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; toDate: string; meal: MealSlot | null }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function CopyMealButton({ fromDate, toDate, meal }: { fromDate: string; t
         }
       >
         <Copy className="size-3.5" />
-        {fmt(t.tracking.copyMealYesterday, { meal: t.meals[meal] })}
+        {meal ? fmt(t.tracking.copyMealYesterday, { meal: t.meals[meal] }) : t.tracking.copyDayYesterday}
       </button>
       {msg && <span className="text-xs text-faint">{msg}</span>}
     </span>

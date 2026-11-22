@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import type { Exercise, WorkoutPlan } from "@/lib/data/types";
 import { Button, Card, Field, Input, Notice, SectionTitle } from "@/components/ui";
+import { WeekdayPicker } from "@/components/weekday-picker";
 import { ExercisePicker, exerciseName } from "../../exercise-picker";
 import { archivePlanAction, savePlanAction } from "../../actions";
 
@@ -21,6 +22,7 @@ export function PlanEditor({ plan, exercises: initialExercises }: { plan: Workou
   const router = useRouter();
   const [exercises, setExercises] = useState(initialExercises);
   const [name, setName] = useState(plan?.name ?? "");
+  const [days, setDays] = useState<number[]>(plan?.schedule_days ?? []);
   const [rows, setRows] = useState<Row[]>(
     (plan?.exercises ?? []).map((e) => ({ key: e.id, exercise_id: e.exercise_id, target_sets: String(e.target_sets), rep_min: String(e.rep_min), rep_max: String(e.rep_max) })),
   );
@@ -45,6 +47,7 @@ export function PlanEditor({ plan, exercises: initialExercises }: { plan: Workou
       const res = await savePlanAction({
         id: plan?.id,
         name,
+        schedule_days: days,
         exercises: rows.map((r) => ({ exercise_id: r.exercise_id, target_sets: Number(r.target_sets), rep_min: Number(r.rep_min), rep_max: Number(r.rep_max) })),
       });
       if (!res.ok) return setError(true);
@@ -58,6 +61,11 @@ export function PlanEditor({ plan, exercises: initialExercises }: { plan: Workou
         <Field label={t.training.planName}>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.training.planNamePlaceholder} maxLength={100} />
         </Field>
+        <div className="mt-4">
+          <span className="mb-1.5 block text-[13px] text-muted">{t.schedule.planDays}</span>
+          <WeekdayPicker value={days} onChange={setDays} />
+          <p className="mt-1.5 text-xs text-faint">{t.schedule.planDaysHint}</p>
+        </div>
       </Card>
       <Card>
         <SectionTitle>{t.training.exercises}</SectionTitle>

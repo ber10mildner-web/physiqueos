@@ -99,6 +99,7 @@ export async function createExerciseAction(input: { name: string; muscle_group: 
 export async function savePlanAction(input: {
   id?: string;
   name: string;
+  schedule_days?: number[];
   exercises: { exercise_id: string; target_sets: number; rep_min: number; rep_max: number }[];
 }): Promise<R<{ id: string }>> {
   const res = await savePlan(input, await requireUser());

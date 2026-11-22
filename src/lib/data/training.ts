@@ -34,7 +34,7 @@ export async function createExercise(input: { name: string; muscle_group: string
 
 export async function listPlans(ctx?: Ctx): Promise<WorkoutPlan[]> {
   const { supabase, userId } = await ctxOr(ctx);
-  const { data, error } = await supabase.from("workout_plans").select("id, name, notes, position").eq("user_id", userId).eq("archived", false).order("position").order("created_at");
+  const { data, error } = await supabase.from("workout_plans").select("id, name, notes, position, schedule_days").eq("user_id", userId).eq("archived", false).order("position").order("created_at");
   check(error, !ctx);
   const plans = data ?? [];
   if (!plans.length) return [];
@@ -45,13 +45,15 @@ export async function listPlans(ctx?: Ctx): Promise<WorkoutPlan[]> {
     .in("plan_id", plans.map((p) => p.id))
     .order("position");
   check(e2, !ctx);
-  return plans.map((p) => ({ ...(p as Omit<WorkoutPlan, "exercises">), exercises: (pe ?? []).filter((x) => x.plan_id === p.id) }));
+  return plans.map((p) => ({ ...(p as Omit<WorkoutPlan, "exercises">), schedule_days: p.schedule_days ?? [], exercises: (pe ?? []).filter((x) => x.plan_id === p.id) }));
 }
 
 const planSchema = z.object({
   id: uuid.optional(),
   name: z.string().trim().min(1).max(100),
   notes: z.string().trim().max(2000).nullish(),
+  /** ISO weekdays (1 = Monday) on which this plan is usually trained. */
+  schedule_days: z.array(z.number().int().min(1).max(7)).max(7).optional(),
   exercises: z
     .array(z.object({ exercise_id: uuid, target_sets: z.number().int().min(1).max(20), rep_min: z.number().int().min(1).max(100), rep_max: z.number().int().min(1).max(100) }).refine((e) => e.rep_min <= e.rep_max))
     .max(40),
@@ -61,7 +63,8 @@ export async function savePlan(input: z.input<typeof planSchema>, ctx?: Ctx): Pr
   const parsed = planSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const { supabase, userId } = await ctxOr(ctx);
-  const row = { user_id: userId, name: parsed.data.name, notes: parsed.data.notes || null };
+  const row: Record<string, unknown> = { user_id: userId, name: parsed.data.name, notes: parsed.data.notes || null };
+  if (parsed.data.schedule_days) row.schedule_days = [...new Set(parsed.data.schedule_days)].sort();
   let id = parsed.data.id;
   if (id) {
     const { data, error } = await supabase.from("workout_plans").update(row).eq("id", id).eq("user_id", userId).select("id").maybeSingle();

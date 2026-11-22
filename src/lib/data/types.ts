@@ -136,6 +136,8 @@ export interface WorkoutPlan {
   name: string;
   notes: string | null;
   position: number;
+  /** ISO weekdays (1 = Monday … 7 = Sunday) on which this plan is planned. */
+  schedule_days: number[];
   exercises: PlanExercise[];
 }
 
@@ -273,5 +275,8 @@ export interface DailyHealth {
   body_battery: number | null;
   steps: number | null;
   stress: number | null;
+  /** Garmin: active calories and resting energy (BMR) of the day. */
+  active_kcal: number | null;
+  bmr_kcal: number | null;
   source: "manual" | "garmin" | "claude";
 }

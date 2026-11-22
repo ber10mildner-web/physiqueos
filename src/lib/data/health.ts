@@ -8,7 +8,7 @@ export async function getHealthRange(from: string, to: string, ctx?: Ctx): Promi
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("daily_health")
-    .select("entry_date, sleep_score, sleep_minutes, resting_hr, hrv_ms, body_battery, steps, stress, source")
+    .select("entry_date, sleep_score, sleep_minutes, resting_hr, hrv_ms, body_battery, steps, stress, active_kcal, bmr_kcal, source")
     .eq("user_id", userId)
     .gte("entry_date", from)
     .lte("entry_date", to)
@@ -27,6 +27,8 @@ export const healthSchema = z.object({
   body_battery: int(0, 100),
   steps: int(0, 200000),
   stress: int(0, 100),
+  active_kcal: int(0, 20000),
+  bmr_kcal: int(500, 6000),
   source: z.enum(["manual", "garmin", "claude"]).default("manual"),
 });
 

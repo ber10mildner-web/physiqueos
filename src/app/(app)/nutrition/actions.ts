@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/auth";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import { logFoodEntry } from "@/lib/data/mutations";
 import { addWater, copyEntries, setFoodFavorite } from "@/lib/data/tracking";
+import { getFood } from "@/lib/data";
+import { logRecipeEntry } from "@/lib/data/recipes";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -57,4 +59,20 @@ export async function deleteEntry(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** One-tap logging of a favourite / frequently eaten food or recipe with its usual amount. */
+export async function quickLog(input: { kind: "food" | "recipe"; id: string; amount_g: number; meal: string; date: string }): Promise<ActionResult> {
+  const ctx = await requireUser();
+  let res: ActionResult;
+  if (input.kind === "recipe") {
+    res = await logRecipeEntry({ recipeId: input.id, amount_g: input.amount_g, meal: input.meal, date: input.date }, ctx);
+  } else {
+    const food = z.string().uuid().safeParse(input.id).success ? await getFood(input.id, ctx) : null;
+    if (!food) return { ok: false, error: "not_found" };
+    const logged = await logFoodEntry({ food, amount_g: input.amount_g, meal: input.meal, date: input.date }, ctx);
+    res = logged.ok ? { ok: true } : logged;
+  }
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
 }

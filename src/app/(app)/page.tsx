@@ -1,26 +1,67 @@
 import Link from "next/link";
 import { ensureRoutines } from "@/lib/data/routines";
-import { ScanBarcode, Plus, Scale, Camera, Quote, Sparkles } from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Plus, Quote, Scale, ScanBarcode, Sparkles } from "lucide-react";
 import { quoteOfDay } from "@/lib/quotes";
+import { claudeLink } from "@/lib/claude-link";
 import { getI18n } from "@/lib/i18n/server";
-import { getDiary, getGoalOn, getProfile, getWeights } from "@/lib/data";
-import { getToday } from "@/lib/auth";
-import { addDays, formatDate } from "@/lib/dates";
+import { fmt } from "@/lib/i18n";
+import { getDiaryRange, getGoalOn, getProfile, getWeights } from "@/lib/data";
+import { getWater } from "@/lib/data/tracking";
+import { listCardio, listCardioTemplates, listPlans, listWorkouts } from "@/lib/data/training";
+import { burnForRange } from "@/lib/burn-data";
+import { getTimeZone, getToday } from "@/lib/auth";
+import { addDays, dayFractionIn, formatDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
+import { nutrientGaps } from "@/lib/nutrition/gaps";
+import { scheduleFor } from "@/lib/training/schedule";
 import { movingAverage, trendChange } from "@/lib/body/weight";
 import { formatNumber } from "@/lib/format";
 import { Card, Page, SectionTitle, buttonClass, cx } from "@/components/ui";
 import { DaySummary } from "@/components/day-summary";
+import { EnergyBalance } from "@/components/energy-balance";
+import { NutrientGaps } from "@/components/nutrient-gaps";
+import { WaterCard } from "./nutrition/water-card";
+import { TodayTraining } from "./today-training";
 
 export default async function DashboardPage() {
   const { t, locale } = await getI18n();
   const today = await getToday();
+  const tomorrow = addDays(today, 1);
+  const monday = startOfWeek(today);
+  const from = addDays(today, -7) < monday ? addDays(today, -7) : monday;
   await ensureRoutines(today);
-  const [entries, goal, weights, profile] = await Promise.all([getDiary(today), getGoalOn(today), getWeights(addDays(today, -40)), getProfile()]);
-  const totals = sumItems(entries);
+  const [entries, goal, weights, profile, water, plans, templates, workouts, cardio] = await Promise.all([
+    getDiaryRange(from, today),
+    getGoalOn(today),
+    getWeights(addDays(today, -40)),
+    getProfile(),
+    getWater(today),
+    listPlans(),
+    listCardioTemplates(),
+    listWorkouts({ from: monday, limit: 50 }),
+    listCardio({ from: today }),
+  ]);
+  const todays = entries.filter((e) => e.entry_date === today);
+  const totals = sumItems(todays);
+  const fraction = dayFractionIn(await getTimeZone());
+  const burn = (await burnForRange(today, today, { [today]: totals.energy_kcal.value }, undefined, { date: today, fraction }))[today];
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
   const latest = trend.at(-1);
   const change = trendChange(trend);
+  const schedule = { plans, templates, workouts, cardio };
+  const hasActive = workouts.some((w) => !w.finished_at);
+
+  // nutrient hints from the last 7 complete days
+  const pastDays: ReturnType<typeof sumItems>[] = [];
+  for (let d = addDays(today, -7); d < today; d = addDays(d, 1)) {
+    const items = entries.filter((e) => e.entry_date === d);
+    if (items.length) pastDays.push(sumItems(items));
+  }
+  const gaps = nutrientGaps(pastDays, profile?.sex ?? null, goal?.fiber_g);
+
+  // this week so far
+  const weekDays = [...new Set(entries.filter((e) => e.entry_date >= monday).map((e) => e.entry_date))];
+  const weekKcal = weekDays.length ? weekDays.reduce((s, d) => s + sumItems(entries.filter((e) => e.entry_date === d)).energy_kcal.value, 0) / weekDays.length : null;
 
   const actions = [
     { href: `/nutrition/add?tab=scan`, label: t.dashboard.scan, icon: ScanBarcode },
@@ -64,6 +105,45 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        <Card>
+          <SectionTitle action={<Link href="/training" className="text-xs text-muted hover:text-text">{t.schedule.all}</Link>}>{t.schedule.title}</SectionTitle>
+          <TodayTraining today={scheduleFor(today, schedule)} tomorrow={scheduleFor(tomorrow, schedule)} hasActive={hasActive} t={t} locale={locale} />
+          {plans.length > 0 && plans.every((p) => p.schedule_days.length === 0) && <p className="mt-3 text-xs text-faint">{t.schedule.setDaysHint}</p>}
+        </Card>
+
+        <Card>
+          <SectionTitle>{t.burn.title}</SectionTitle>
+          <EnergyBalance intake={totals.energy_kcal.value} burn={burn} isToday t={t} locale={locale} />
+        </Card>
+
+        <Card>
+          <WaterCard date={today} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} compact />
+        </Card>
+
+        <Link href="/week" className="block">
+          <Card className="flex items-center gap-3 transition hover:bg-surface-2/60">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-2">
+              <CalendarDays className="size-5 text-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">{t.week.title}</div>
+              <div className="num truncate text-xs text-muted">
+                {fmt(t.week.teaser, {
+                  days: weekDays.length,
+                  kcal: weekKcal === null ? "–" : formatNumber(weekKcal, locale),
+                  workouts: workouts.length,
+                })}
+              </div>
+            </div>
+            <ChevronRight className="size-5 text-faint" />
+          </Card>
+        </Link>
+
+        <Card>
+          <SectionTitle>{t.gaps.title}</SectionTitle>
+          <NutrientGaps result={gaps} t={t} locale={locale} limit={2} />
+        </Card>
 
         <Link href="/body" className="block">
           <Card className="transition hover:bg-surface-2/60">
@@ -118,9 +198,4 @@ export default async function DashboardPage() {
       </div>
     </Page>
   );
-}
-
-/** Opens a new Claude chat with the question already filled in. */
-function claudeLink(prompt: string) {
-  return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
 }

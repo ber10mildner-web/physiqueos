@@ -31,7 +31,22 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] „Gewicht eintragen“: Datumsfeld auf dem iPhone ausgerichtet, Schnellzugriff-Beschriftungen zentriert
 - [x] Flüssiger: Server in Frankfurt (wie die Datenbank), sofortige Ladeanzeige beim Tab-Wechsel, kein doppeltes Neuladen nach dem Speichern
 - [ ] Vorlagen auch für Krafttraining-Einheiten (heute: Trainingspläne)
-- [ ] Gym-Kalorien ohne Uhr schätzen (aus Dauer, Volumen, Gewicht)
+- [x] Gym-Kalorien ohne Uhr schätzen (aus Dauer und Gewicht, MET 4,5; zählt in den Tagesverbrauch, 2026-11-22)
+
+## Ideen-Runde 2026-11-22 (Leo + Claude)
+
+- [x] Favoriten und häufig Gegessenes mit einem Tipp eintragen (Leiste in jeder Mahlzeit, mit der zuletzt gegessenen Menge), Favorit direkt im Tagebuch setzen, ganzen Tag von gestern kopieren
+- [x] Startseite: Training heute und morgen (Trainingstage pro Plan + wiederkehrendes Cardio), mit Start-Knopf
+- [x] Gesamter Kalorienverbrauch pro Tag (Grundumsatz + Schritte/Garmin + Cardio + Krafttraining + Verdauung) und Bilanz zum Gegessenen
+- [x] Wochenrückblick als eigene Seite (Kalorien pro Tag, Bilanz, Eiweiß, Ballaststoffe, Wasser, Gewicht, Training, Schlaf, Nährstoff-Hinweise, Knopf für Claude)
+- [x] Offline: installierte App zeigt besuchte Seiten ohne Netz; Wasser, Favoriten-Tipps und Gewicht werden gespeichert und später gesendet
+- [x] Visuell: Bilder (Emoji-Icons) für Lebensmittel, Mahlzeit-Karten mit Makros, Wochenleiste oben (eigener Sigma-Stil, nicht Fitia nachgebaut)
+- [x] Wasser mit einem Tipp auf der Startseite (Gläser)
+- [x] Hinweis bei fehlenden Nährstoffen (Vergleich mit DGE-Referenzwerten, nur wenn genug Daten da sind)
+- [x] Eiweiß pro Mahlzeit (Ziel ≈ 0,4 g/kg pro Mahlzeit)
+- [ ] Offline auch für Suche/Barcode (bräuchte eine lokale Lebensmittel-Datenbank auf dem Handy)
+- [ ] Echte Fotos statt Emoji für eigene Rezepte (Foto beim Rezept speichern)
+- [ ] Verbrauch automatisch lernen: aus Gewichtstrend und Essen den echten Verbrauch schätzen („adaptives TDEE“, siehe unten)
 
 ## Kommerzialisierung / für andere Leute
 
@@ -48,20 +63,20 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 
 - Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel automatisch nachjustieren
 - Wöchentlicher Check-in: Gewichtstrend vs. Ziel der Phase (z. B. Diät: −0,5 bis −1 % Körpergewicht pro Woche)
-- Mikronährstoff-Ampel gegen Referenzwerte (DGE), mit Hinweis welche Lebensmittel fehlen
+- [x] Mikronährstoff-Ampel gegen Referenzwerte (DGE), mit Hinweis welche Lebensmittel fehlen (2026-11-22: Nährstoff-Hinweise)
 - Körpermaße (Taille, Brust, Arme, Oberschenkel) mit Verlauf
 - Foto-Erinnerung (z. B. jeden Sonntag morgens, gleiche Pose)
 - Portionsgrößen pro Lebensmittel merken („meine Portion Haferflocken = 80 g“)
 - Mahlzeiten-Vorlagen (z. B. „Frühstück Standard“ mit einem Tipp eintragen)
-- Proteinverteilung über den Tag anzeigen
-- Offline-Modus (Einträge zwischenspeichern, später synchronisieren)
+- [x] Proteinverteilung über den Tag anzeigen (2026-11-22)
+- [x] Offline-Modus (Einträge zwischenspeichern, später synchronisieren) (2026-11-22, für Schnell-Einträge)
 - Export als CSV
 - Heller Modus
 - [x] Trainingsplan-Empfehlungen (progressive Überlastung: wann Gewicht erhöhen)
 - Cardio-Zonen aus Garmin-Herzfrequenz
 - Schlaf vs. Trainingsleistung vs. Kalorien in der Analyse vergleichen
 - Pausen-Timer zwischen Sätzen
-- Garmin-Kalorienverbrauch (aktive kcal) nutzen, um das Kalorienziel an Trainingstagen anzupassen
+- [~] Garmin-Kalorienverbrauch (aktive kcal) nutzen, um das Kalorienziel an Trainingstagen anzupassen (2026-11-22: aktive kcal fließen in den Tagesverbrauch; Ziel passt sich noch nicht automatisch an)
 - Übersicht/Dashboard: Schlaf, Body Battery und Schritte von heute als Kacheln
 - Hinweis in der App, wenn der Garmin-Abgleich mehrere Tage fehlschlägt
 - Automatische Wochenauswertung von Claude jeden Sonntag (geplanter Chat)

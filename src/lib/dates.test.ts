@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, isIsoDate, todayIn } from "./dates";
+import { addDays, isIsoDate, startOfWeek, todayIn, weekdayOf } from "./dates";
 
 describe("dates", () => {
   it("validates ISO dates strictly", () => {
@@ -19,5 +19,14 @@ describe("dates", () => {
     expect(todayIn("Europe/Berlin", instant)).toBe("2026-11-20");
     expect(todayIn("America/New_York", instant)).toBe("2026-11-19");
     expect(todayIn("Not/AZone", instant)).toBe("2026-11-20"); // falls back to Europe/Berlin
+  });
+});
+
+describe("weeks", () => {
+  it("weekdayOf and startOfWeek use Monday as first day", () => {
+    expect(weekdayOf("2026-11-22")).toBe(7);
+    expect(weekdayOf("2026-11-23")).toBe(1);
+    expect(startOfWeek("2026-11-22")).toBe("2026-11-16");
+    expect(startOfWeek("2026-11-23")).toBe("2026-11-23");
   });
 });

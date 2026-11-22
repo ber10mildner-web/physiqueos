@@ -22,6 +22,7 @@ Du brauchst zwei kostenlose Konten: **Supabase** (Datenbank, Login, Fotospeicher
 7. Rechte für Claude-Anbindung und Garmin: [`supabase/migrations/20261120000300_service_role_grants.sql`](../supabase/migrations/20261120000300_service_role_grants.sql).
 8. Sigma-Funktionen (Trainingsbewertung, Gerätefoto, Haut & Medikamente, Ziele pro Wochentag): [`supabase/migrations/20261120000400_sigma.sql`](../supabase/migrations/20261120000400_sigma.sql).
 9. Trainingszeiten, Gefühl pro Übung, wiederkehrendes Cardio, Supplemente mit Nährwerten: [`supabase/migrations/20261121000000_routines.sql`](../supabase/migrations/20261121000000_routines.sql).
+10. Trainingstage für Pläne (Startseite „heute & morgen“) und Garmin-Kalorien für den Tagesverbrauch: [`supabase/migrations/20261122000000_today_week.sql`](../supabase/migrations/20261122000000_today_week.sql).
 
 Tipp am Handy: Öffne die Datei auf GitHub, tippe auf das Kopier-Symbol („Copy raw file“) und füge sie im SQL Editor ein.
 

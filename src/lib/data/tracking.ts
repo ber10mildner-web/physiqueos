@@ -2,6 +2,12 @@ import "server-only";
 import { z } from "zod";
 import { check, ctxOr, type Ctx } from "./core";
 import { dateSchema, mealSchema, type Result } from "./mutations";
+import { getFavoriteFoods } from "./index";
+import { listRecipes } from "./recipes";
+import { addDays } from "@/lib/dates";
+import { sanitizeNutrients } from "@/lib/nutrition/nutrients";
+import { recipeAsCandidate } from "@/lib/nutrition/recipe-candidate";
+import { buildQuickPicks, type PickFavorite, type PickHistoryRow, type QuickPick } from "@/lib/nutrition/quick-picks";
 
 /** Total water (ml) for a day. */
 export async function getWater(date: string, ctx?: Ctx): Promise<number> {
@@ -62,4 +68,40 @@ export async function copyEntries(input: { fromDate: string; toDate: string; mea
   const { error: e2 } = await supabase.from("diary_entries").insert(rows);
   if (e2) return { ok: false, error: e2.message };
   return { ok: true, copied: rows.length };
+}
+
+/**
+ * Favourites plus what was eaten in the last 45 days, for one-tap logging.
+ * See src/lib/nutrition/quick-picks.ts for the ranking.
+ */
+export async function getQuickPicks(today: string, ctx?: Ctx): Promise<QuickPick[]> {
+  const c = await ctxOr(ctx);
+  const [{ data, error }, foods, recipes] = await Promise.all([
+    c.supabase
+      .from("diary_entries")
+      .select("food_id, recipe_id, meal, amount_g, created_at, food_name, nutrients_per_100g")
+      .eq("user_id", c.userId)
+      .gte("entry_date", addDays(today, -45))
+      .is("medication_log_id", null)
+      .order("created_at", { ascending: false })
+      .limit(800),
+    getFavoriteFoods(c),
+    listRecipes({ includeArchived: true }, c),
+  ]);
+  check(error, !ctx);
+  const history: PickHistoryRow[] = (data ?? []).map((r) => ({
+    ...(r as unknown as PickHistoryRow),
+    amount_g: Number(r.amount_g),
+    nutrients_per_100g: sanitizeNutrients(r.nutrients_per_100g),
+  }));
+  const favorites: PickFavorite[] = [
+    ...foods.map((f) => ({ kind: "food" as const, id: f.id, name: f.name, serving_size_g: f.serving_size_g, nutrients: f.nutrients })),
+    ...recipes
+      .filter((r) => r.is_favorite && !r.archived)
+      .map(recipeAsCandidate)
+      .map((r) => ({ kind: "recipe" as const, id: r.id!, name: r.name, serving_size_g: r.serving_size_g, nutrients: r.nutrients })),
+  ];
+  // archived recipes stay out of quick picks
+  const archived = new Set(recipes.filter((r) => r.archived).map((r) => r.id));
+  return buildQuickPicks(history, favorites).filter((p) => !(p.kind === "recipe" && archived.has(p.id)));
 }
