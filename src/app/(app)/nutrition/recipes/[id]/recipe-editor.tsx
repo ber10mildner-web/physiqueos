@@ -279,6 +279,17 @@ export function RecipeEditor({ recipe, recent, favorites, today }: { recipe: Rec
             {t.recipes.total}: {nutrition.total.energy_kcal !== undefined ? `${formatNumber(nutrition.total.energy_kcal, locale)} kcal` : "–"}
             {nutrition.total.protein_g !== undefined && ` · ${t.nutrients.protein_g} ${formatNumber(nutrition.total.protein_g, locale)} g`}
           </div>
+          {nutrition.partial.length > 0 && (
+            <p className="mt-2 text-xs text-faint">
+              {fmt(t.recipes.partialNutrients, {
+                list:
+                  nutrition.partial
+                    .slice(0, 8)
+                    .map((p) => `${t.nutrients[p.key]} ${Math.round(p.knownShare * 100)} %`)
+                    .join(", ") + (nutrition.partial.length > 8 ? " …" : ""),
+              })}
+            </p>
+          )}
           {nutrition.unknown.length > 0 && (
             <p className="mt-2 text-xs text-faint">
               {fmt(t.recipes.unknownNutrients, { list: nutrition.unknown.slice(0, 8).map((k) => t.nutrients[k]).join(", ") + (nutrition.unknown.length > 8 ? " …" : "") })}

@@ -132,7 +132,7 @@ export async function deleteRecipe(id: string, ctx?: Ctx): Promise<Result> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-/** Logs an amount of a recipe. Only nutrients known for every ingredient are recorded. */
+/** Logs an amount of a recipe. Energy/macros must be complete; micros may be partial sums (see recipeNutrition). */
 export async function logRecipeEntry(input: { recipeId: string; amount_g: number; meal: string; date: string }, ctx?: Ctx): Promise<Result> {
   const parsed = z.object({ recipeId: z.string().uuid(), amount_g: z.number().positive().max(5000), meal: mealSchema, date: dateSchema }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };

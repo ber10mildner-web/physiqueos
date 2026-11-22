@@ -222,7 +222,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
     return json(
       recipes.map((r) => {
         const n = recipeNutrition(r.ingredients, r.cooked_weight_g);
-        return { recipe_id: r.id, name: r.name, ingredients: r.ingredients.map((i) => `${i.amount_g} g ${i.name}`), total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown };
+        return { recipe_id: r.id, name: r.name, ingredients: r.ingredients.map((i) => `${i.amount_g} g ${i.name}`), total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown, partial_nutrients: n.partial };
       }),
     );
   });
@@ -320,7 +320,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
       if (!res.ok) return fail(res.error.startsWith("incomplete:") ? `Ingredient "${res.error.slice(11)}" lacks energy/macros – ask for label values.` : res.error);
       const recipe = await getRecipe(res.id, ctx);
       const n = recipeNutrition(recipe!.ingredients, recipe!.cooked_weight_g);
-      return json({ ok: true, recipe_id: res.id, total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown });
+      return json({ ok: true, recipe_id: res.id, total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown, partial_nutrients: n.partial });
     },
     true,
   );
