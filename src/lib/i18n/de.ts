@@ -610,7 +610,9 @@ const de = {
   quick: {
     title: "Schnell eintragen",
     logNow: "eintragen",
-    search: "Suchen, scannen oder Rezept",
+    search: "Hinzufügen",
+    withClaude: "Claude",
+    withClaudeHint: "Mit Claude eintragen: Rezeptfoto oder Gericht beschreiben, Claude sucht die Zutaten und trägt alles ein",
   },
   week: {
     title: "Wochenrückblick",

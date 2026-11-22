@@ -72,7 +72,7 @@ export function MealCard({
         </ul>
       )}
       <div className="space-y-3 px-4 pt-3 pb-4">
-        <MealActions meal={meal} date={date} picks={open} color={color} label={fmt(t.nutrition.addTo, { meal: name })} startOpen={items.length === 0} />
+        <MealActions meal={meal} mealName={name} date={date} picks={open} color={color} label={fmt(t.nutrition.addTo, { meal: name })} startOpen={items.length === 0} />
         {items.length === 0 && <CopyMealButton fromDate={addDays(date, -1)} toDate={date} meal={meal} />}
       </div>
     </Card>
