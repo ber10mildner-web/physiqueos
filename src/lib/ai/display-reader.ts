@@ -8,6 +8,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
+import type { TokenUsage } from "./cost";
 
 export const displayReaderEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
@@ -25,7 +26,7 @@ const PROMPT = `This is a photo of the display of a gym cardio machine, usually 
 Read the values exactly as shown. Do not estimate or calculate anything that is not displayed; use null for values that are not visible.
 Time: convert to minutes (e.g. 45:30 → 45.5, 1:02:00 → 62).`;
 
-export async function readDisplay(jpeg: Buffer): Promise<DisplayValues | null> {
+export async function readDisplay(jpeg: Buffer): Promise<{ values: DisplayValues | null; model: string; usage: TokenUsage }> {
   const client = new Anthropic();
   const response = await client.beta.messages.parse({
     model: process.env.ANTHROPIC_MODEL || "claude-opus-5-5",
@@ -43,6 +44,7 @@ export async function readDisplay(jpeg: Buffer): Promise<DisplayValues | null> {
       },
     ],
   });
-  if (response.stop_reason === "refusal") return null;
-  return response.parsed_output ?? null;
+  const u = response.usage;
+  const usage: TokenUsage = { input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_creation_input_tokens: u.cache_creation_input_tokens, cache_read_input_tokens: u.cache_read_input_tokens };
+  return { values: response.stop_reason === "refusal" ? null : (response.parsed_output ?? null), model: response.model, usage };
 }

@@ -80,9 +80,16 @@ Ohne eigenen Schlüssel nutzt die App den `DEMO_KEY`, der nur wenige Anfragen pr
 
 Verbindung verloren oder Adresse geteilt? In der App widerrufen und eine neue erstellen.
 
-## Optional: Gerätefotos direkt in der App auslesen
+## Optional: KI-Fotos in der App (Mahlzeiten und Gerätefotos)
 
-Ohne weitere Einrichtung liest Claude deine Stairmaster-Fotos kostenlos über den Konnektor aus (in der Claude-App: „Lies meine Gerätefotos in Sigma aus“). Wenn die App das Foto selbst auslesen soll, brauchst du einen API-Schlüssel von <https://platform.claude.com> mit etwas Guthaben (ein Foto kostet weniger als 1 Cent). Den Schlüssel in Vercel als `ANTHROPIC_API_KEY` eintragen und neu deployen. Dann erscheint beim Cardio-Eintrag der Knopf **Foto auslesen**.
+Ohne weitere Einrichtung liest Claude Fotos kostenlos über den Konnektor aus (Knopf **Claude** bei jeder Mahlzeit, oder in der Claude-App „Lies meine Gerätefotos in Sigma aus“). Wenn die App Fotos selbst auswerten soll (Knopf mit der Kamera bei jeder Mahlzeit, **Foto auslesen** beim Cardio):
+
+1. Auf <https://platform.claude.com> anmelden, unter **Billing** etwas Guthaben aufladen (5 $ reichen lange) und unter **API Keys** einen Schlüssel erstellen. Gleich kopieren, er wird nur einmal angezeigt.
+2. In Vercel: Projekt → **Settings → Environment Variables** → `ANTHROPIC_API_KEY` mit dem Schlüssel anlegen.
+3. Optional ebenda: `AI_MONTHLY_BUDGET_EUR` (Monatsdeckel pro Person, Standard 2) und `AI_DAILY_PHOTO_LIMIT` (Mahlzeitfotos pro Tag, Standard 15).
+4. **Deployments** → beim neuesten Eintrag **⋯ → Redeploy**.
+
+Ein Mahlzeitfoto kostet etwa 1 bis 2 Cent. Jede Anfrage wird mit ihren echten Kosten gespeichert (Tabelle `ai_usage`, Migration `20261123000100_ai_usage.sql`); unter **Profil → KI-Fotos** siehst du den Stand. Ist der Monatsdeckel erreicht, startet keine neue Anfrage mehr. Zusätzlich kannst du bei platform.claude.com unter **Limits** ein festes Ausgabenlimit für den ganzen Schlüssel setzen.
 
 ## Garmin verbinden (Versuch)
 

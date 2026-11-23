@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Sparkles, Star } from "lucide-react";
+import { Camera, Plus, Sparkles, Star } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import type { MealSlot } from "@/lib/data/types";
 import type { QuickPick } from "@/lib/nutrition/quick-picks";
@@ -15,6 +15,7 @@ import { QuickAdd } from "./quick-add";
  * already has food the picks fold away behind a star button to keep the day tidy.
  * The Claude button opens claude.ai with a ready prompt to log a recipe photo or
  * a dish from a restaurant through the Sigma connector (free, no in-app AI).
+ * The camera button opens the in-app photo flow (paid API; without a key that page offers Claude).
  */
 export function MealActions({ meal, mealName, date, picks, color, label, startOpen }: { meal: MealSlot; mealName: string; date: string; picks: QuickPick[]; color: string; label: string; startOpen: boolean }) {
   const { t, locale } = useI18n();
@@ -29,6 +30,14 @@ export function MealActions({ meal, mealName, date, picks, color, label, startOp
           aria-label={label}
         >
           <Plus className="size-4" style={{ color }} /> {t.quick.search}
+        </Link>
+        <Link
+          href={`/nutrition/photo?date=${date}&meal=${meal}`}
+          aria-label={t.photoMeal.buttonHint}
+          title={t.photoMeal.buttonHint}
+          className="grid h-11 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-text transition hover:bg-surface-3 active:scale-[0.98]"
+        >
+          <Camera className="size-4" style={{ color }} />
         </Link>
         <a
           href={claudeLink(claudeLogPrompt({ date, meal, mealName, locale }))}

@@ -1,7 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getToday, requireUser } from "@/lib/auth";
+import { getTimeZone, getToday, requireUser } from "@/lib/auth";
+import { todayIn } from "@/lib/dates";
 import { getI18n } from "@/lib/i18n/server";
 import {
   addCardio,
@@ -30,6 +31,7 @@ import { exerciseHint, type ExerciseHint } from "@/lib/training/hints";
 import type { Exercise, TrainingRating } from "@/lib/data/types";
 import { PHOTO_BUCKET } from "@/lib/data";
 import { displayReaderEnabled, readDisplay, type DisplayValues } from "@/lib/ai/display-reader";
+import { canSpend, recordUsage } from "@/lib/ai/usage";
 
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -219,8 +221,12 @@ export async function readMachinePhotoAction(id: string): Promise<R<{ values: Di
   if (!session?.machine_photo_path) return { ok: false, error: "no_photo" };
   const file = await ctx.supabase.storage.from(PHOTO_BUCKET).download(session.machine_photo_path);
   if (file.error || !file.data) return { ok: false, error: "download" };
+  const timeZone = await getTimeZone();
+  const budget = await canSpend(ctx, todayIn(timeZone), timeZone, "cardio_display");
+  if (!budget.ok) return { ok: false, error: budget.reason };
   try {
-    const values = await readDisplay(Buffer.from(await file.data.arrayBuffer()));
+    const { values, model, usage } = await readDisplay(Buffer.from(await file.data.arrayBuffer()));
+    await recordUsage(ctx, "cardio_display", model, usage);
     return values && values.readable ? { ok: true, values } : { ok: false, error: "unreadable" };
   } catch (e) {
     console.error("display reader", e);
