@@ -10,6 +10,8 @@ import { ProfileForm } from "./profile-form";
 import { MealSlotsForm } from "./meal-slots-form";
 import { mealSlotsOf } from "@/lib/nutrition/meal-slots";
 import { GoalForm } from "./goal-form";
+import { CoachCard } from "@/components/coach-card";
+import { loadCoach } from "@/lib/coach";
 import { LanguageSwitch } from "./language-switch";
 import { signOut } from "@/app/login/actions";
 import { fmt } from "@/lib/i18n";
@@ -24,7 +26,7 @@ export default async function SettingsPage() {
     getTimeZone(),
   ]);
   const { email } = ctx;
-  const goal = await getGoalOn(today);
+  const [goal, coach] = await Promise.all([getGoalOn(today), loadCoach(today, ctx, { profile })]);
   // Without the ai_usage migration the card simply stays hidden.
   const ai = aiEnabled() ? await getAiUsage(ctx, today, timeZone).catch(() => null) : null;
   const eur = (v: number) => `${formatNumber(v, locale, 2)} €`;
@@ -37,6 +39,7 @@ export default async function SettingsPage() {
           <SectionTitle>{t.settings.goals}</SectionTitle>
           <GoalForm profile={profile} latestWeightKg={weight?.weight_kg ?? null} goal={goal} today={today} />
         </Card>
+        <CoachCard coach={coach} always />
         <Card>
           <SectionTitle>{t.mealSetup.title}</SectionTitle>
           <MealSlotsForm slots={mealSlotsOf(profile)} />

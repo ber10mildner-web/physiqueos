@@ -1,12 +1,12 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { LineChart, Plus, Trophy, X } from "lucide-react";
+import { LineChart, Plus, TrendingUp, Trophy, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
 import type { Exercise, ExerciseNote, Workout, WorkoutSet } from "@/lib/data/types";
-import { estimate1RM, suggestNext, volume } from "@/lib/training/calc";
+import { coachNext, estimate1RM, volume } from "@/lib/training/calc";
 import type { ExerciseHint } from "@/lib/training/hints";
 import { Button, Card, Notice, cx } from "@/components/ui";
 import { ExercisePicker, exerciseName } from "../../exercise-picker";
@@ -108,7 +108,7 @@ export function WorkoutLogger({
   );
 }
 
-function ExerciseBlock({
+export function ExerciseBlock({
   workoutId,
   exercise,
   sets,
@@ -126,10 +126,10 @@ function ExerciseBlock({
   const { t, locale } = useI18n();
   const repMin = target?.rep_min ?? 8;
   const repMax = target?.rep_max ?? 12;
-  const suggestion = hint ? suggestNext(hint.lastSets, repMax, exercise.equipment) : null;
+  const suggestion = hint ? coachNext(hint.sessions ?? [hint.lastSets], repMin, repMax, exercise.equipment) : null;
   const lastLogged = sets.filter((s) => !s.is_warmup).at(-1);
   const [kg, setKg] = useState(lastLogged ? String(lastLogged.weight_kg) : suggestion && suggestion.kind !== "first" ? String(suggestion.weight_kg) : "");
-  const [reps, setReps] = useState(lastLogged ? String(lastLogged.reps) : "");
+  const [reps, setReps] = useState(lastLogged ? String(lastLogged.reps) : suggestion && suggestion.kind !== "first" ? String(suggestion.reps) : "");
   const [warmup, setWarmup] = useState(false);
   const [pr, setPr] = useState(false);
   const [error, setError] = useState(false);
@@ -152,14 +152,21 @@ function ExerciseBlock({
   };
 
   const done = sets.filter((s) => !s.is_warmup).length;
-  const suggestionText =
-    suggestion?.kind === "first"
+  const kgText = (v: number) => formatNumber(v, locale, 1);
+  const suggestionText = !suggestion
+    ? null
+    : suggestion.kind === "first"
       ? fmt(t.training.suggestFirst, { min: repMin, max: repMax })
-      : suggestion?.kind === "increase"
-        ? fmt(t.training.suggestIncrease, { weight: formatNumber(suggestion.weight_kg, locale, 1) })
-        : suggestion?.kind === "same"
-          ? fmt(t.training.suggestSame, { weight: formatNumber(suggestion.weight_kg, locale, 1) })
-          : null;
+      : suggestion.kind === "increase"
+        ? fmt(t.training.coachIncrease, { weight: kgText(suggestion.weight_kg), reps: suggestion.reps, from: kgText(suggestion.from_kg) })
+        : suggestion.kind === "lighter"
+          ? fmt(t.training.coachLighter, { weight: kgText(suggestion.weight_kg), reps: suggestion.reps, min: repMin, max: repMax })
+          : suggestion.kind === "deload"
+            ? fmt(t.training.coachDeload, { weight: kgText(suggestion.weight_kg), reps: suggestion.reps, n: suggestion.sessions })
+            : exercise.equipment === "bodyweight"
+              ? fmt(t.training.coachRepsBodyweight, { reps: suggestion.reps })
+              : fmt(t.training.coachReps, { weight: kgText(suggestion.weight_kg), reps: suggestion.reps });
+  const canApply = suggestion && suggestion.kind !== "first" && !(kg === String(suggestion.weight_kg) && reps === String(suggestion.reps));
 
   return (
     <Card>
@@ -185,7 +192,24 @@ function ExerciseBlock({
           })}
         </p>
       )}
-      {suggestionText && <p className="mt-0.5 text-xs text-accent">{fmt(t.training.suggestion, { text: suggestionText })}</p>}
+      {suggestionText && (
+        <div className="mt-1.5 flex items-start gap-2 rounded-xl bg-accent/10 px-3 py-2">
+          <TrendingUp className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden="true" />
+          <p className="flex-1 text-xs leading-snug text-text">{suggestionText}</p>
+          {canApply && (
+            <button
+              type="button"
+              className="shrink-0 rounded-lg bg-accent/15 px-2 py-1 text-[11px] font-medium text-accent"
+              onClick={() => {
+                setKg(String(suggestion.weight_kg));
+                setReps(String(suggestion.reps));
+              }}
+            >
+              {t.training.coachApply}
+            </button>
+          )}
+        </div>
+      )}
 
       {sets.length > 0 && (
         <ul className="mt-3 space-y-1.5">

@@ -9,6 +9,7 @@ import { burnForRange } from "@/lib/burn-data";
 import { addDays } from "@/lib/dates";
 import { sumItems, type NutrientTotals } from "@/lib/nutrition/calc";
 import { nutrientGaps } from "@/lib/nutrition/gaps";
+import { eatenFoods, suggestGapFoods } from "@/lib/nutrition/gap-foods";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { movingAverage } from "@/lib/body/weight";
 import { volume } from "@/lib/training/calc";
@@ -25,7 +26,7 @@ export interface WeekDay {
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
 
-export async function weekSummary(monday: string, today: string, ctx?: Ctx) {
+export async function weekSummary(monday: string, today: string, ctx?: Ctx, lang: "de" | "en" = "de") {
   const sunday = addDays(monday, 6);
   const last = sunday < today ? sunday : today;
   const [entries, goals, weights, water, health, workouts, cardio, profile] = await Promise.all([
@@ -75,6 +76,9 @@ export async function weekSummary(monday: string, today: string, ctx?: Ctx) {
   const weighIns = weights.filter((w) => w.entry_date >= monday && w.entry_date <= last).length;
 
   const fiberGoal = goalOn(last)?.fiber_g ?? null;
+  const gaps = nutrientGaps(loggedTotals, profile?.sex ?? null, fiberGoal);
+  const eaten = eatenFoods(entries);
+  const gapFoods = Object.fromEntries(gaps.gaps.slice(0, 5).map((g) => [g.key, suggestGapFoods(g, eaten, lang)]));
   return {
     monday,
     sunday,
@@ -104,7 +108,8 @@ export async function weekSummary(monday: string, today: string, ctx?: Ctx) {
       sleepMin: avg(health.map((h) => h.sleep_minutes).filter((x): x is number => x !== null)),
       steps: avg(health.map((h) => h.steps).filter((x): x is number => x !== null)),
     },
-    gaps: nutrientGaps(loggedTotals, profile?.sex ?? null, fiberGoal),
+    gaps,
+    gapFoods,
   };
 }
 

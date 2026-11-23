@@ -5,7 +5,7 @@ import { quoteOfDay } from "@/lib/quotes";
 import { claudeLink } from "@/lib/claude-link";
 import { getI18n } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n";
-import { getDiaryRange, getGoalOn, getProfile, getWeights } from "@/lib/data";
+import { getDiaryRange, getGoalOn, getGoalsBetween, getProfile, getWeights } from "@/lib/data";
 import { getWater } from "@/lib/data/tracking";
 import { listCardio, listCardioTemplates, listPlans, listWorkouts } from "@/lib/data/training";
 import { burnForRange } from "@/lib/burn-data";
@@ -13,6 +13,10 @@ import { getTimeZone, getToday } from "@/lib/auth";
 import { addDays, dayFractionIn, formatDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
 import { nutrientGaps } from "@/lib/nutrition/gaps";
+import { eatenFoods, suggestGapFoods } from "@/lib/nutrition/gap-foods";
+import { loadCoach } from "@/lib/coach";
+import { CoachCard } from "@/components/coach-card";
+import { GoalStatus } from "@/components/goal-status";
 import { scheduleFor } from "@/lib/training/schedule";
 import { movingAverage, trendChange } from "@/lib/body/weight";
 import { formatNumber } from "@/lib/format";
@@ -28,9 +32,10 @@ export default async function DashboardPage() {
   const today = await getToday();
   const tomorrow = addDays(today, 1);
   const monday = startOfWeek(today);
-  const from = addDays(today, -7) < monday ? addDays(today, -7) : monday;
+  // 28 days back for the calorie check; also covers this week and the nutrient hints.
+  const from = addDays(today, -28);
   await ensureRoutines(today);
-  const [entries, goal, weights, profile, water, plans, templates, workouts, cardio] = await Promise.all([
+  const [entries, goal, weights, profile, water, plans, templates, workouts, cardio, goals] = await Promise.all([
     getDiaryRange(from, today),
     getGoalOn(today),
     getWeights(addDays(today, -40)),
@@ -40,6 +45,7 @@ export default async function DashboardPage() {
     listCardioTemplates(),
     listWorkouts({ from: monday, limit: 50 }),
     listCardio({ from: today }),
+    getGoalsBetween(from, today),
   ]);
   const todays = entries.filter((e) => e.entry_date === today);
   const totals = sumItems(todays);
@@ -58,6 +64,10 @@ export default async function DashboardPage() {
     if (items.length) pastDays.push(sumItems(items));
   }
   const gaps = nutrientGaps(pastDays, profile?.sex ?? null, goal?.fiber_g);
+  const lang = locale.startsWith("de") ? "de" : "en";
+  const eaten = eatenFoods(entries.filter((e) => e.entry_date >= addDays(today, -28) && e.entry_date < today));
+  const gapFoods = Object.fromEntries(gaps.gaps.slice(0, 2).map((g) => [g.key, suggestGapFoods(g, eaten, lang)]));
+  const coach = await loadCoach(today, undefined, { weights, entries, goals, goalToday: goal, profile });
 
   // this week so far
   const weekDays = [...new Set(entries.filter((e) => e.entry_date >= monday).map((e) => e.entry_date))];
@@ -142,7 +152,7 @@ export default async function DashboardPage() {
 
         <Card>
           <SectionTitle>{t.gaps.title}</SectionTitle>
-          <NutrientGaps result={gaps} t={t} locale={locale} limit={2} />
+          <NutrientGaps result={gaps} t={t} locale={locale} limit={2} foods={gapFoods} />
         </Card>
 
         <Link href="/body" className="block">
@@ -170,8 +180,11 @@ export default async function DashboardPage() {
             ) : (
               <p className="text-sm text-muted">{t.dashboard.noWeight}</p>
             )}
+            <GoalStatus coach={coach} t={t} locale={locale} compact />
           </Card>
         </Link>
+
+        <CoachCard coach={coach} />
 
         <Card>
           <SectionTitle>

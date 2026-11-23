@@ -9,6 +9,9 @@ import { movingAverage, trendChange } from "@/lib/body/weight";
 import { Card, Page, PageHeader, SectionTitle, cx } from "@/components/ui";
 import { WeightForm } from "./weight-form";
 import { WeightChart } from "./weight-chart";
+import { GoalWeightForm } from "./goal-weight-form";
+import { GoalStatus } from "@/components/goal-status";
+import { loadCoach } from "@/lib/coach";
 import { WeightHistory } from "./weight-history";
 import { HealthForm, HealthList, HealthToday } from "./health";
 import { getHealthRange } from "@/lib/data/health";
@@ -28,12 +31,13 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
   const from = days ? addDays(today, -days + 1) : undefined;
   await ensureRoutines(today);
   // Fetch 6 extra days so the moving average at the start of the range is correct.
-  const [weights, health, skin, medications, medLogs] = await Promise.all([
+  const [weights, health, skin, medications, medLogs, coach] = await Promise.all([
     getWeights(from ? addDays(from, -6) : undefined),
     getHealthRange(addDays(today, -13), today),
     getSkinRange(addDays(today, -13), today),
     listMedications(),
     getMedicationLogs(addDays(today, -13), today),
+    loadCoach(today),
   ]);
   const last14 = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
@@ -74,8 +78,23 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
               </Link>
             ))}
           </div>
-          {visible.length > 0 ? <WeightChart data={visible} /> : <p className="py-10 text-center text-sm text-muted">{t.body.noEntries}</p>}
+          {visible.length > 0 ? (
+            <WeightChart data={visible} forecast={coach.forecast} goal={coach.goal.goal_weight_kg} />
+          ) : (
+            <p className="py-10 text-center text-sm text-muted">{t.body.noEntries}</p>
+          )}
           <p className="mt-2 text-xs text-faint">{t.body.trendExplain}</p>
+          {weights.length > 0 && (
+            <div className="mt-3">
+              <GoalStatus coach={coach} t={t} locale={locale} />
+            </div>
+          )}
+          <details className="group mt-3">
+            <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-sm font-medium text-muted group-open:mb-3">
+              {coach.goal.goal_weight_kg === null ? t.goalWeight.set : t.goalWeight.edit}
+            </summary>
+            <GoalWeightForm goalKg={coach.goal.goal_weight_kg} paceKgWeek={coach.goal.goal_pace_kg_week} currentKg={coach.current === null ? null : Math.round(coach.current * 10) / 10} />
+          </details>
         </Card>
 
         <Card>

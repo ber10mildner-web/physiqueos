@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimate1RM, records, suggestNext, volume } from "./calc";
+import { coachNext, estimate1RM, records, volume } from "./calc";
 
 describe("training calc", () => {
   it("estimates 1RM with Epley", () => {
@@ -32,12 +32,35 @@ describe("training calc", () => {
     // 100·(1+8/30)=126.67, 110·(1+5/30)=128.33
     expect(r.best1RM?.weight_kg).toBe(110);
   });
+});
 
-  it("suggests double progression", () => {
-    expect(suggestNext([], 12, "barbell")).toEqual({ kind: "first" });
-    expect(suggestNext([{ reps: 12, weight_kg: 60 }, { reps: 12, weight_kg: 60 }], 12, "barbell")).toEqual({ kind: "increase", weight_kg: 62.5 });
-    expect(suggestNext([{ reps: 12, weight_kg: 20 }, { reps: 12, weight_kg: 20 }], 12, "dumbbell")).toEqual({ kind: "increase", weight_kg: 22 });
-    expect(suggestNext([{ reps: 12, weight_kg: 60 }, { reps: 10, weight_kg: 60 }], 12, "barbell")).toEqual({ kind: "same", weight_kg: 60 });
-    expect(suggestNext([{ reps: 15, weight_kg: 0 }], 12, "bodyweight")).toEqual({ kind: "same", weight_kg: 0 });
+describe("coachNext", () => {
+  const s = (w: number, ...reps: number[]) => reps.map((r) => ({ weight_kg: w, reps: r }));
+  it("asks for a start weight without history", () => {
+    expect(coachNext([], 8, 12, "barbell")).toEqual({ kind: "first" });
+  });
+  it("adds a step when every top set reached the top of the range", () => {
+    expect(coachNext([s(80, 12, 12, 12)], 8, 12, "barbell")).toEqual({ kind: "increase", weight_kg: 82.5, reps: 8, from_kg: 80 });
+    expect(coachNext([s(20, 12, 12)], 8, 12, "dumbbell")).toEqual({ kind: "increase", weight_kg: 22, reps: 8, from_kg: 20 });
+  });
+  it("ignores warm-ups and lighter back-off sets", () => {
+    const session = [{ weight_kg: 40, reps: 10, is_warmup: true }, ...s(80, 12, 12), { weight_kg: 60, reps: 6 }];
+    expect(coachNext([session], 8, 12, "barbell").kind).toBe("increase");
+  });
+  it("asks for one more rep at the same weight", () => {
+    expect(coachNext([s(80, 9, 8, 8)], 8, 12, "barbell")).toEqual({ kind: "reps", weight_kg: 80, reps: 9 });
+  });
+  it("goes one step lighter when no set reached the range", () => {
+    expect(coachNext([s(80, 6, 5)], 8, 12, "barbell")).toEqual({ kind: "lighter", weight_kg: 77.5, reps: 8 });
+  });
+  it("suggests a deload after three sessions without progress", () => {
+    const res = coachNext([s(80, 9, 8), s(80, 9, 8), s(80, 10, 8)], 8, 12, "barbell");
+    expect(res).toEqual({ kind: "deload", weight_kg: 72.5, reps: 12, sessions: 3 });
+  });
+  it("does not call it a stall while reps still go up", () => {
+    expect(coachNext([s(80, 10, 9), s(80, 9, 8), s(80, 8, 8)], 8, 12, "barbell").kind).toBe("reps");
+  });
+  it("bodyweight: one more rep", () => {
+    expect(coachNext([s(0, 15, 12)], 8, 12, "bodyweight")).toEqual({ kind: "reps", weight_kg: 0, reps: 16 });
   });
 });
