@@ -57,11 +57,11 @@ export async function copyEntries(input: { fromDate: string; toDate: string; mea
   const { supabase, userId } = await ctxOr(ctx);
   let q = supabase
     .from("diary_entries")
-    .select("meal, food_id, food_name, food_brand, source, source_id, nutrients_per_100g, amount_g, recipe_id")
+    .select("meal, food_id, food_name, food_brand, source, source_id, nutrients_per_100g, amount_g, recipe_id, sort_order")
     .eq("user_id", userId)
     .eq("entry_date", parsed.data.fromDate);
   if (parsed.data.meal) q = q.eq("meal", parsed.data.meal);
-  const { data, error } = await q.order("created_at");
+  const { data, error } = await q.order("sort_order", { ascending: true, nullsFirst: false }).order("created_at");
   if (error) return { ok: false, error: error.message };
   if (!data?.length) return { ok: true, copied: 0 };
   const rows = data.map((r) => ({ ...r, user_id: userId, entry_date: parsed.data.toDate, meal: parsed.data.toMeal ?? r.meal }));

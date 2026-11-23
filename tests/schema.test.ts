@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -49,6 +49,8 @@ describe("schema", () => {
   it("knows pre/post-workout meals, per-user meal setup and plan weekdays", async () => {
     await as(A, () => db.exec(`insert into public.diary_entries (user_id, entry_date, meal, food_name, source, nutrients_per_100g, amount_g) values ('${A}', '2026-11-22', 'post_workout', 'Skyr', 'custom', '{}', 250)`));
     await as(A, () => db.exec(`update public.profiles set meal_slots = '[{"key":"breakfast","name":null},{"key":"snack","name":"Supplemente"}]' where id = '${A}'`));
+    await as(A, () => db.exec(`update public.diary_entries set sort_order = 2 where user_id = '${A}'`));
+    await expect(as(A, () => db.exec(`update public.diary_entries set sort_order = -1 where user_id = '${A}'`))).rejects.toThrow(/check constraint/);
     await expect(as(A, () => db.exec(`update public.profiles set meal_slots = '{"key":"snack"}' where id = '${A}'`))).rejects.toThrow(/check constraint/);
     await expect(as(A, () => db.exec(`insert into public.workout_plans (user_id, name, schedule_days) values ('${A}', 'Push', '{8}')`))).rejects.toThrow(/check constraint/);
     const r = await as(A, () => db.query<{ meal_slots: unknown }>(`select meal_slots from public.profiles where id = '${A}'`));

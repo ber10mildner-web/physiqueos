@@ -72,6 +72,7 @@ export async function getDiary(date: string, ctx?: Ctx): Promise<DiaryEntry[]> {
     .select("id, entry_date, meal, food_id, food_name, food_brand, source, source_id, nutrients_per_100g, amount_g, created_at, recipe_id")
     .eq("user_id", userId)
     .eq("entry_date", date)
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
   check(error, !ctx);
   return (data ?? []).map(mapEntry);
@@ -207,6 +208,7 @@ export async function getDiaryRange(from: string, to: string, ctx?: Ctx): Promis
     .gte("entry_date", from)
     .lte("entry_date", to)
     .order("entry_date")
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at")
     .limit(5000);
   check(error, !ctx);

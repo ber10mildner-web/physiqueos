@@ -54,15 +54,30 @@ export async function updateEntryAmount(id: string, amountG: number): Promise<Ac
   return { ok: true };
 }
 
-/** Moves a diary entry to another meal of the same day (e.g. lunch → supplements). */
-export async function moveEntry(id: string, meal: string): Promise<ActionResult> {
+/**
+ * Puts a diary entry into a meal at a position (drag with the finger): `orderedIds`
+ * is the meal's complete new order, including the moved entry. Works within a
+ * meal (re-sorting) and across meals of the same day.
+ */
+export async function placeEntry(id: string, meal: string, orderedIds: string[]): Promise<ActionResult> {
   const { supabase, userId } = await requireUser();
-  const slot = z.enum(MEALS as [string, ...string[]]).safeParse(meal);
-  if (!slot.success) return { ok: false, error: "invalid" };
-  const { error } = await supabase.from("diary_entries").update({ meal: slot.data }).eq("id", id).eq("user_id", userId);
-  if (error) return { ok: false, error: error.message };
+  const input = z
+    .object({ id: z.string().uuid(), meal: z.enum(MEALS as [string, ...string[]]), orderedIds: z.array(z.string().uuid()).min(1).max(200) })
+    .safeParse({ id, meal, orderedIds });
+  if (!input.success || !input.data.orderedIds.includes(input.data.id) || new Set(input.data.orderedIds).size !== input.data.orderedIds.length)
+    return { ok: false, error: "invalid" };
+  const results = await Promise.all(
+    input.data.orderedIds.map((entryId, i) =>
+      supabase
+        .from("diary_entries")
+        .update(entryId === input.data.id ? { meal: input.data.meal, sort_order: i } : { sort_order: i })
+        .eq("id", entryId)
+        .eq("user_id", userId),
+    ),
+  );
+  const failed = results.find((r) => r.error);
   revalidatePath("/", "layout");
-  return { ok: true };
+  return failed?.error ? { ok: false, error: failed.error.message } : { ok: true };
 }
 
 export async function deleteEntry(id: string): Promise<ActionResult> {

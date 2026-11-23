@@ -149,8 +149,8 @@ const de = {
     editAmount: "Menge ändern",
     amount: "Menge (g)",
     deleteEntry: "Eintrag löschen",
-    moveTo: "Verschieben nach",
-    moveHint: "Lange drücken zum Verschieben",
+    moveHint: "Gedrückt halten und ziehen: sortieren oder in eine andere Mahlzeit schieben",
+    sortHint: "Gedrückt halten und ziehen zum Sortieren",
   },
   addFood: {
     title: "Lebensmittel hinzufügen",

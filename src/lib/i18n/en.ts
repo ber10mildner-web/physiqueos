@@ -146,8 +146,8 @@ const en: Dictionary = {
     editAmount: "Change amount",
     amount: "Amount (g)",
     deleteEntry: "Delete entry",
-    moveTo: "Move to",
-    moveHint: "Long-press to move",
+    moveHint: "Hold and drag to sort or move to another meal",
+    sortHint: "Hold and drag to sort",
   },
   addFood: {
     title: "Add food",

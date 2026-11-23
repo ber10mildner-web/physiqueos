@@ -14,7 +14,7 @@ import { DaySummary } from "@/components/day-summary";
 import { NutrientDetails } from "./nutrient-details";
 import { WaterCard } from "./water-card";
 import { CopyMealButton } from "./copy-meal-button";
-import { MealCard } from "./meal-card";
+import { MealsBoard } from "./meals-board";
 import { WeekStrip } from "./week-strip";
 
 export default async function NutritionPage({ searchParams }: PageProps<"/nutrition">) {
@@ -71,19 +71,12 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
           </div>
         )}
 
-        {meals.map((meal) => (
-          <MealCard
-            key={meal}
-            meal={meal}
-            name={mealName(meal, slots, t.meals)}
-            items={entries.filter((e) => e.meal === meal)}
-            date={date}
-            picks={rankForMeal(picks, meal, 12)}
-            favoriteIds={favoriteIds}
-            t={t}
-            locale={locale}
-          />
-        ))}
+        <MealsBoard
+          meals={meals.map((meal) => ({ meal, name: mealName(meal, slots, t.meals), picks: rankForMeal(picks, meal, 12) }))}
+          entries={entries}
+          date={date}
+          favoriteIds={[...favoriteIds]}
+        />
 
         <Card>
           <WaterCard date={date} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} />
