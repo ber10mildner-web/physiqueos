@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ChevronRight, Sparkles, Watch } from "lucide-react";
+import { Camera, ChevronRight, Sparkles, Watch } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getGoalOn, getLatestWeight, getProfile } from "@/lib/data";
-import { getToday, requireUser } from "@/lib/auth";
+import { getTimeZone, getToday, requireUser } from "@/lib/auth";
+import { aiEnabled, getAiUsage } from "@/lib/ai/usage";
+import { formatNumber } from "@/lib/format";
 import { Card, Page, PageHeader, SectionTitle, buttonClass } from "@/components/ui";
 import { ProfileForm } from "./profile-form";
 import { MealSlotsForm } from "./meal-slots-form";
@@ -13,14 +15,19 @@ import { signOut } from "@/app/login/actions";
 import { fmt } from "@/lib/i18n";
 
 export default async function SettingsPage() {
-  const [{ t }, profile, weight, today, { email }] = await Promise.all([
+  const [{ t, locale }, profile, weight, today, ctx, timeZone] = await Promise.all([
     getI18n(),
     getProfile(),
     getLatestWeight(),
     getToday(),
     requireUser(),
+    getTimeZone(),
   ]);
+  const { email } = ctx;
   const goal = await getGoalOn(today);
+  // Without the ai_usage migration the card simply stays hidden.
+  const ai = aiEnabled() ? await getAiUsage(ctx, today, timeZone).catch(() => null) : null;
+  const eur = (v: number) => `${formatNumber(v, locale, 2)} €`;
 
   return (
     <Page>
@@ -62,6 +69,19 @@ export default async function SettingsPage() {
             <ChevronRight className="size-5 text-faint" />
           </Card>
         </Link>
+        <Card className="flex items-start gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-3">
+            <Camera className="size-5 text-accent" />
+          </div>
+          <div className="flex-1">
+            <div className="font-medium">{t.photoMeal.usageTitle}</div>
+            <div className="num text-sm text-muted">
+              {ai
+                ? fmt(t.photoMeal.usage, { month: eur(ai.monthEur), budget: eur(ai.monthlyBudgetEur), today: ai.todayPhotos, limit: ai.dailyPhotoLimit })
+                : t.photoMeal.usageOff}
+            </div>
+          </div>
+        </Card>
         <Card>
           <SectionTitle>{t.settings.language}</SectionTitle>
           <LanguageSwitch />

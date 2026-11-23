@@ -17,6 +17,7 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Subjektive Trainingsbewertung (Gefühl, Energie, Anstrengung, Notiz)
 - [x] Haut (Pickel) und Medikamente als Tagesprotokoll
 - [x] Stairmaster-/Gerätefoto mit Garmin verrechnen (genauere Kalorien)
+- [x] Mahlzeit per Foto in der App: Foto, optional Rezept und Abweichungen, Gewicht; KI erkennt nur Zutaten, Werte aus der Sigma-Datenbank, Wasserverlust-Aufschlag, Kostendeckel pro Person
 - [x] Tageszitat
 - [x] Kalorienziel pro Wochentag (z. B. Cardio-Tage Di/Do mehr)
 - [x] Claude-Auswertung aus der App heraus (öffnet die Claude-App, kostenlos über den Konnektor)

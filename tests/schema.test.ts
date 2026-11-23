@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -46,6 +46,18 @@ beforeAll(async () => {
 }, 60_000);
 
 describe("schema", () => {
+  it("ai_usage: own rows can be read and added, never changed or deleted", async () => {
+    await as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model, input_tokens, output_tokens, cost_eur) values ('${A}', 'meal_photo', 'claude-opus-5-5', 2500, 600, 0.021)`));
+    await expect(as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model) values ('${B}', 'meal_photo', 'x')`))).rejects.toThrow(/row-level security/);
+    await expect(as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model) values ('${A}', 'chat', 'x')`))).rejects.toThrow(/check constraint/);
+    await expect(as(A, () => db.exec(`update public.ai_usage set cost_eur = 0 where user_id = '${A}'`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, () => db.exec(`delete from public.ai_usage where user_id = '${A}'`))).rejects.toThrow(/permission denied/);
+    const mine = await as(A, () => db.query<{ n: number }>(`select count(*)::int as n from public.ai_usage`));
+    const theirs = await as(B, () => db.query<{ n: number }>(`select count(*)::int as n from public.ai_usage`));
+    expect(mine.rows[0].n).toBe(1);
+    expect(theirs.rows[0].n).toBe(0);
+  });
+
   it("knows pre/post-workout meals, per-user meal setup and plan weekdays", async () => {
     await as(A, () => db.exec(`insert into public.diary_entries (user_id, entry_date, meal, food_name, source, nutrients_per_100g, amount_g) values ('${A}', '2026-11-22', 'post_workout', 'Skyr', 'custom', '{}', 250)`));
     await as(A, () => db.exec(`update public.profiles set meal_slots = '[{"key":"breakfast","name":null},{"key":"snack","name":"Supplemente"}]' where id = '${A}'`));
