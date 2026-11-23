@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -46,6 +46,27 @@ beforeAll(async () => {
 }, 60_000);
 
 describe("schema", () => {
+  it("waitlist: anyone can join via the function, nobody can read or change the list", async () => {
+    await db.exec("set role anon;");
+    try {
+      await db.exec(`select public.join_waitlist('  Max@Example.de ', 'TikTok')`);
+      await db.exec(`select public.join_waitlist('max@example.de', 'instagram')`);
+      await db.exec(`select public.join_waitlist('eva@example.de', 'x; drop table')`);
+      await expect(db.exec(`select public.join_waitlist('kein-at-zeichen', null)`)).rejects.toThrow(/check constraint/);
+      await expect(db.exec(`select * from public.waitlist`)).rejects.toThrow(/permission denied/);
+      await expect(db.exec(`insert into public.waitlist (email) values ('a@b.de')`)).rejects.toThrow(/permission denied/);
+      await expect(db.exec(`delete from public.waitlist`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.exec("reset role;");
+    }
+    await expect(as(A, () => db.exec(`select * from public.waitlist`))).rejects.toThrow(/permission denied/);
+    const r = await db.query<{ email: string; source: string | null }>(`select email, source from public.waitlist order by email`);
+    expect(r.rows).toEqual([
+      { email: "eva@example.de", source: null },
+      { email: "max@example.de", source: "tiktok" },
+    ]);
+  });
+
   it("ai_usage: own rows can be read and added, never changed or deleted", async () => {
     await as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model, input_tokens, output_tokens, cost_eur) values ('${A}', 'meal_photo', 'claude-opus-5-5', 2500, 600, 0.021)`));
     await expect(as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model) values ('${B}', 'meal_photo', 'x')`))).rejects.toThrow(/row-level security/);
