@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Star, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
+import { fmt } from "@/lib/i18n";
 import type { DiaryEntry } from "@/lib/data/types";
 import { scaleNutrients } from "@/lib/nutrition/calc";
 import { formatNumber } from "@/lib/format";
@@ -10,6 +11,7 @@ import { Button, Input, cx } from "@/components/ui";
 import { useMeals } from "@/components/meals-context";
 import { deleteEntry, toggleFavorite, updateEntryAmount } from "./actions";
 import { useEntryDnd } from "./entry-dnd";
+import { FoodPeekSheet } from "./food-peek-sheet";
 
 /** Width of the red delete button revealed by swiping left. */
 const REVEAL = 88;
@@ -27,6 +29,8 @@ export function EntryRow({
   const meals = useMeals();
   const dnd = useEntryDnd();
   const [open, setOpen] = useState(false);
+  /** Tapping the food's picture opens a short "what is in it?" overview. */
+  const [peek, setPeek] = useState(false);
   const [amount, setAmount] = useState(String(entry.amount_g));
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pending, start] = useTransition();
@@ -63,6 +67,16 @@ export function EntryRow({
   const cancelPress = () => {
     if (pressTimer.current) clearTimeout(pressTimer.current);
     pressTimer.current = null;
+  };
+  /** A tap right after a swipe, long press or drop is not meant as a tap; a tap on a swiped row closes it. */
+  const tapAllowed = () => {
+    if (Date.now() - swipedAt.current < 400) return false;
+    if (dnd && Date.now() - dnd.lastDropAt() < 400) return false;
+    if (dx !== 0) {
+      setDx(0);
+      return false;
+    }
+    return true;
   };
   const remove = () => {
     setRemoved(true);
@@ -156,18 +170,28 @@ export function EntryRow({
             setDx(0);
           }}
         >
+          <div className="flex items-center hover:bg-surface-2/60">
+          {/* The picture is its own tap target (nutrient overview); the rest of the row edits the amount. */}
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-2/60"
+            className="shrink-0 py-2.5 pl-4 transition-transform active:scale-90"
+            aria-label={fmt(t.peek.open, { food: entry.food_name })}
             onClick={() => {
-              if (Date.now() - swipedAt.current < 400) return;
-              if (dnd && Date.now() - dnd.lastDropAt() < 400) return;
-              if (dx !== 0) return setDx(0);
+              if (!tapAllowed()) return;
+              setPeek(true);
+            }}
+          >
+            <FoodIcon name={entry.food_name} kind={entry.source} />
+          </button>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-4 pl-3 text-left"
+            onClick={() => {
+              if (!tapAllowed()) return;
               setOpen(!open);
             }}
             aria-expanded={open}
           >
-            <FoodIcon name={entry.food_name} kind={entry.source} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] leading-snug">
                 {entry.food_name}
@@ -191,8 +215,10 @@ export function EntryRow({
               </div>
             </div>
           </button>
+          </div>
         </div>
       </div>
+      {peek && <FoodPeekSheet entry={entry} onClose={() => setPeek(false)} />}
       {open && (
         <form
           className="flex items-end gap-2 px-4 pb-3"
