@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured, supabaseEnv } from "./env";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/setup", "/manifest.webmanifest", "/icons"];
+const PUBLIC_PATHS = ["/login", "/auth", "/setup", "/warteliste", "/manifest.webmanifest", "/icons"];
 
 /** Refreshes the auth session on every request and redirects signed-out users to /login. */
 export async function updateSession(request: NextRequest) {
