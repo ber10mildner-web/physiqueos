@@ -25,7 +25,14 @@ export function AddFood({
   recent,
   favorites,
   recipes,
+  initialQuery,
+  initialFood,
+  initialAmount,
 }: {
+  initialQuery?: string;
+  /** Opens the amount sheet for this food right away (e.g. from a nutrient hint). */
+  initialFood?: FoodCandidate | null;
+  initialAmount?: number;
   initialTab: Tab;
   initialMeal: MealSlot;
   date: string;
@@ -40,7 +47,7 @@ export function AddFood({
   const [tab, setTab] = useState<Tab>(initialTab);
   const [meal, setMeal] = useState<MealSlot>(initialMeal);
   const [date, setDate] = useState(initialDate);
-  const [selected, setSelected] = useState<FoodCandidate | null>(null);
+  const [selected, setSelected] = useState<FoodCandidate | null>(initialFood ?? null);
   const [draft, setDraft] = useState<Partial<FoodCandidate> | null>(null);
 
   const tabs: { id: Tab; label: string }[] = [
@@ -89,7 +96,7 @@ export function AddFood({
         ))}
       </div>
 
-      {tab === "search" && <FoodSearch recent={recent} favorites={favorites} onSelect={setSelected} />}
+      {tab === "search" && <FoodSearch recent={recent} favorites={favorites} onSelect={setSelected} initialQuery={initialQuery} />}
       {tab === "recipes" && <RecipePicker recipes={recipes} onSelect={setSelected} />}
       {tab === "scan" && <BarcodeTab onFound={setSelected} onNotFound={(barcode) => openManual({ barcode })} />}
       {tab === "manual" && <FoodForm key={JSON.stringify(draft)} initial={draft} onSubmit={setSelected} />}
@@ -103,6 +110,7 @@ export function AddFood({
           onComplete={(f) => (f.source === "recipe" ? router.push(`/nutrition/recipes/${f.id}`) : openManual(f))}
           onLogged={() => router.push(`/nutrition?date=${date}`)}
           onSubmit={selected.source === "recipe" ? (g) => logRecipe(selected.id!, g, meal, date) : undefined}
+          initialAmount={selected === initialFood ? initialAmount : undefined}
         />
       )}
     </div>

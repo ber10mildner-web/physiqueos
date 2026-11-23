@@ -1,15 +1,20 @@
 "use client";
-import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useI18n } from "@/lib/i18n/client";
-import { dayNumber, type TrendPoint } from "@/lib/body/weight";
+import { dayNumber, type TrendPoint, type WeightPoint } from "@/lib/body/weight";
 import { formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
 
 /** Raw weigh-ins as recessive dots, the 7-day average as the highlighted line. One y-axis. */
-export function WeightChart({ data }: { data: TrendPoint[] }) {
+export function WeightChart({ data, forecast = [], goal = null }: { data: TrendPoint[]; forecast?: WeightPoint[]; goal?: number | null }) {
   const { t, locale } = useI18n();
-  const rows = data.map((p) => ({ x: dayNumber(p.date), date: p.date, weight: p.weight, average: Math.round(p.average * 100) / 100 }));
-  const values = rows.flatMap((r) => [r.weight, r.average]);
+  type Row = { x: number; date: string; weight?: number; average?: number; forecast?: number };
+  const rows: Row[] = data.map((p) => ({ x: dayNumber(p.date), date: p.date, weight: p.weight, average: Math.round(p.average * 100) / 100 }));
+  for (const f of forecast) rows.push({ x: dayNumber(f.date), date: f.date, forecast: Math.round(f.weight * 100) / 100 });
+  const values = rows.flatMap((r) => [r.weight, r.average, r.forecast]).filter((v): v is number => v !== undefined);
+  // Show the goal line only when it is close to the data, so the chart does not get squashed.
+  const showGoal = goal !== null && goal >= Math.min(...values) - 4 && goal <= Math.max(...values) + 4;
+  if (showGoal) values.push(goal!);
   const min = Math.floor(Math.min(...values) - 0.5);
   const max = Math.ceil(Math.max(...values) + 0.5);
 
@@ -22,6 +27,11 @@ export function WeightChart({ data }: { data: TrendPoint[] }) {
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-muted" /> {t.body.chartWeight}
         </span>
+        {forecast.length > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-4 border-t-2 border-dashed border-accent/70" /> {t.forecast.chartForecast}
+          </span>
+        )}
       </div>
       <div className="h-56 w-full" role="img" aria-label={t.body.chartTrend}>
         <ResponsiveContainer width="100%" height="100%">
@@ -50,23 +60,42 @@ export function WeightChart({ data }: { data: TrendPoint[] }) {
             <Tooltip
               cursor={{ stroke: "var(--faint)", strokeWidth: 1 }}
               content={({ active, payload }) => {
-                const r = active && payload?.[0]?.payload;
+                const r = active && (payload?.[0]?.payload as Row | undefined);
                 if (!r) return null;
                 return (
                   <div className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs shadow-xl">
                     <div className="mb-1 text-muted">{formatDate(r.date, locale)}</div>
-                    <div className="num text-text">
-                      {t.body.chartWeight}: {formatNumber(r.weight, locale, 2)} kg
-                    </div>
-                    <div className="num text-text">
-                      {t.body.chartTrend}: {formatNumber(r.average, locale, 2)} kg
-                    </div>
+                    {r.weight !== undefined && (
+                      <div className="num text-text">
+                        {t.body.chartWeight}: {formatNumber(r.weight, locale, 2)} kg
+                      </div>
+                    )}
+                    {r.average !== undefined && (
+                      <div className="num text-text">
+                        {t.body.chartTrend}: {formatNumber(r.average, locale, 2)} kg
+                      </div>
+                    )}
+                    {r.forecast !== undefined && (
+                      <div className="num text-text">
+                        {t.forecast.chartForecast}: {formatNumber(r.forecast, locale, 1)} kg
+                      </div>
+                    )}
                   </div>
                 );
               }}
             />
             <Scatter dataKey="weight" fill="var(--muted)" fillOpacity={0.55} shape="circle" isAnimationActive={false} />
-            <Line type="monotone" dataKey="average" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: "var(--surface)", strokeWidth: 2 }} isAnimationActive={false} />
+            {showGoal && (
+              <ReferenceLine
+                y={goal!}
+                stroke="var(--fiber)"
+                strokeDasharray="4 4"
+                strokeOpacity={0.7}
+                label={{ value: `${t.forecast.chartGoal} ${formatNumber(goal!, locale, 1)}`, position: "insideTopRight", fill: "var(--fiber)", fontSize: 11 }}
+              />
+            )}
+            <Line type="linear" dataKey="forecast" stroke="var(--accent)" strokeOpacity={0.7} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+            <Line type="monotone" dataKey="average" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: "var(--surface)", strokeWidth: 2 }} connectNulls isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

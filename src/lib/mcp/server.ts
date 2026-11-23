@@ -1,3 +1,4 @@
+import { loadCoach } from "@/lib/coach";
 import "server-only";
 /**
  * MCP server for Claude. Every tool runs as the user who owns the personal
@@ -46,6 +47,8 @@ Weekly review: call get_period_summary for the last 7 days (and optionally the 7
 Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
 Meals: slots are breakfast, pre_workout, post_workout, lunch, dinner, snack. The user can rename and hide them (get_overview → profile.meal_slots; e.g. "snack" may be called "Supplemente"); use their names when talking to them.
+
+Coach: get_overview -> coach has the goal weight, the weight trend as a line through the last 4 weeks of weigh-ins (kg/week), a goal date forecast, the measured maintenance calories (average intake of fully logged days minus the energy stored or lost according to the trend, 7700 kcal per kg) and Sigma's calorie suggestion. Use these numbers in reviews instead of computing your own, and mention that they are estimates with the given confidence.
 
 Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
 
@@ -149,10 +152,36 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
   };
 
   // ---------- read ----------
-  tool("get_overview", "Profile, current nutrition goal, latest weight and today's date.", z.object({}), async () => {
-    const [profile, goal, weights] = await Promise.all([getProfile(ctx), getGoalOn(today(), ctx), getWeights(addDays(today(), -30), ctx)]);
-    return json({ today: today(), profile, current_goal: goal, recent_weights: weights.slice(-10) });
-  });
+  tool(
+    "get_overview",
+    "Profile, current nutrition goal, latest weight, today's date, and the coach: goal weight with forecast, measured maintenance calories (adaptive TDEE) and Sigma's calorie suggestion.",
+    z.object({}),
+    async () => {
+      const [profile, goal, weights] = await Promise.all([getProfile(ctx), getGoalOn(today(), ctx), getWeights(addDays(today(), -30), ctx)]);
+      const coach = await loadCoach(today(), ctx, { profile, goalToday: goal });
+      const r2 = (v: number) => Math.round(v * 100) / 100;
+      return json({
+        today: today(),
+        profile,
+        current_goal: goal,
+        recent_weights: weights.slice(-10),
+        coach: {
+          goal_weight_kg: coach.goal.goal_weight_kg,
+          wanted_pace_kg_per_week: coach.wanted,
+          trend_kg_per_week: coach.rate ? r2(coach.rate.kgPerWeek) : null,
+          trend_basis: coach.rate ? { weigh_ins: coach.rate.samples, span_days: coach.rate.spanDays } : null,
+          smoothed_weight_kg: coach.current === null ? null : r2(coach.current),
+          goal_forecast: coach.eta,
+          measured_tdee: coach.tdee.ok
+            ? { kcal: coach.tdee.estimate.tdee, avg_intake_kcal: coach.tdee.estimate.avgIntake, fully_logged_days: coach.tdee.estimate.loggedDays, confidence: coach.tdee.estimate.confidence, from: coach.tdee.estimate.from, to: coach.tdee.estimate.to }
+            : { unavailable: coach.tdee.reason, fully_logged_days: coach.tdee.loggedDays, weigh_ins: coach.tdee.weighIns },
+          calorie_suggestion: coach.suggestion
+            ? { change_kcal_per_day: coach.suggestion.change, new_targets: coach.suggestion.base, new_special_day_targets: coach.suggestion.alt, aims_for_kg_per_week: coach.suggestion.aimKgPerWeek, note: "The user applies this in the app (start page or settings); do not claim it was applied." }
+            : null,
+        },
+      });
+    },
+  );
 
   tool("get_day", "All diary entries of one day with totals (per nutrient incl. data coverage), goal and water.", z.object({ date: date.optional() }), async ({ date: d }: { date?: string }) => {
     const day = d ?? today();

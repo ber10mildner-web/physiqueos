@@ -50,7 +50,17 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [ ] Dieselbe Übersicht auch in der Suche, bei Favoriten und Rezept-Zutaten
 - [ ] Offline auch für Suche/Barcode (bräuchte eine lokale Lebensmittel-Datenbank auf dem Handy)
 - [ ] Echte Fotos statt Emoji für eigene Rezepte (Foto beim Rezept speichern)
-- [ ] Verbrauch automatisch lernen: aus Gewichtstrend und Essen den echten Verbrauch schätzen („adaptives TDEE“, siehe unten)
+- [x] Verbrauch automatisch lernen: aus Gewichtstrend und Essen den echten Verbrauch schätzen („adaptives TDEE“, siehe unten) (2026-11-23: Kalorien-Check)
+
+## Ideen-Runde 2026-11-23 (alle von Leo freigegeben)
+
+- [x] Gewichtstrend als Linie durch alle Wiegungen der letzten 4 Wochen, Zielgewicht + Wunschtempo, Prognose „Ziel ca. am …“ (gestrichelt im Diagramm)
+- [x] Kalorien-Check: echter Verbrauch aus Essen und Gewichtstrend, Vorschlag für ein neues Kalorienziel (max. 400 kcal pro Schritt, mit einem Tipp übernehmen)
+- [x] Progressive Overload: „Heute 82,5 kg × 8 probieren“, eine Wdh. mehr, leichter bei zu schwer, Deload nach 3 Einheiten ohne Fortschritt, Übernehmen-Knopf
+- [x] Vorher/Nachher: erstes und neuestes Foto automatisch, nebeneinander oder überblenden, Gewicht dazu; Kamera mit eingeblendetem letztem Foto (gleiche Pose) und Selbstauslöser
+- [x] Nährstofflücken mit konkreten Mengen („25 g Kürbiskerne, +148 mg Magnesium“), Werte aus der Datenbank, direkt eintragen
+- [ ] Wochentage im Kalorien-Check getrennt lernen (z. B. Cardio-Tage)
+- [ ] Pose-Kamera: Erinnerung jeden Sonntag
 
 ## Kommerzialisierung / für andere Leute
 
@@ -65,8 +75,8 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 
 ## Ideen von Claude
 
-- Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel automatisch nachjustieren
-- Wöchentlicher Check-in: Gewichtstrend vs. Ziel der Phase (z. B. Diät: −0,5 bis −1 % Körpergewicht pro Woche)
+- [x] Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel nachjustieren (2026-11-23: Vorschlag, du bestätigst)
+- [x] Wöchentlicher Check-in: Gewichtstrend vs. Ziel der Phase (z. B. Diät: −0,5 bis −1 % Körpergewicht pro Woche)
 - [x] Mikronährstoff-Ampel gegen Referenzwerte (DGE), mit Hinweis welche Lebensmittel fehlen (2026-11-22: Nährstoff-Hinweise)
 - Körpermaße (Taille, Brust, Arme, Oberschenkel) mit Verlauf
 - Foto-Erinnerung (z. B. jeden Sonntag morgens, gleiche Pose)

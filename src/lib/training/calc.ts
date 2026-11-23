@@ -48,30 +48,62 @@ export function loadStep(equipment: string): number {
   return 2.5;
 }
 
-export type Suggestion =
-  | { kind: "first" }
-  | { kind: "increase"; weight_kg: number }
-  | { kind: "same"; weight_kg: number };
-
-/**
- * Double progression: once every working set of the last session reached the
- * top of the rep range, add one load step; otherwise keep the weight and aim
- * for more reps.
- */
-export function suggestNext(lastSession: SetLike[], repMax: number, equipment: string): Suggestion {
-  const working = lastSession.filter((s) => !s.is_warmup && s.reps > 0);
-  if (working.length === 0) return { kind: "first" };
-  const top = Math.max(...working.map((s) => s.weight_kg));
-  const topSets = working.filter((s) => s.weight_kg === top);
-  const step = loadStep(equipment);
-  if (step > 0 && topSets.every((s) => s.reps >= repMax)) return { kind: "increase", weight_kg: Math.round((top + step) * 100) / 100 };
-  return { kind: "same", weight_kg: top };
-}
-
 /** Workout length in whole minutes, or null while it is still running / times are implausible. */
 export function workoutMinutes(startedAt: string, finishedAt: string | null): number | null {
   if (!finishedAt) return null;
   const ms = Date.parse(finishedAt) - Date.parse(startedAt);
   if (!Number.isFinite(ms) || ms <= 0 || ms > 12 * 3600_000) return null;
   return Math.round(ms / 60_000);
+}
+
+export type Coach =
+  | { kind: "first" }
+  /** All working sets at the top weight reached the top of the range: go up one step. */
+  | { kind: "increase"; weight_kg: number; reps: number; from_kg: number }
+  /** Same weight, one more rep than last time (up to the top of the range). */
+  | { kind: "reps"; weight_kg: number; reps: number }
+  /** Last time no set reached the bottom of the range: one step lighter. */
+  | { kind: "lighter"; weight_kg: number; reps: number }
+  /** Three sessions in a row without progress at the same weight: about 10 % lighter, then build back up. */
+  | { kind: "deload"; weight_kg: number; reps: number; sessions: number };
+
+/** Working sets of one session, at its heaviest weight. */
+function topSets(session: SetLike[]): { weight: number; reps: number[] } | null {
+  const working = session.filter((s) => !s.is_warmup && s.reps > 0);
+  if (!working.length) return null;
+  const weight = Math.max(...working.map((s) => s.weight_kg));
+  return { weight, reps: working.filter((s) => s.weight_kg === weight).map((s) => s.reps) };
+}
+
+const roundToStep = (v: number, step: number) => Math.round(Math.round(v / step) * step * 100) / 100;
+
+/**
+ * Progressive overload coach (double progression with stall detection).
+ * @param sessions previous sessions of this exercise, newest first (each a list of sets).
+ */
+export function coachNext(sessions: SetLike[][], repMin: number, repMax: number, equipment: string): Coach {
+  const tops = sessions.map(topSets).filter((t): t is NonNullable<typeof t> => t !== null);
+  const last = tops[0];
+  if (!last) return { kind: "first" };
+  const step = loadStep(equipment);
+  const lowest = Math.min(...last.reps);
+  const highest = Math.max(...last.reps);
+
+  if (step === 0) {
+    // Bodyweight: only reps can go up.
+    return { kind: "reps", weight_kg: last.weight, reps: highest + 1 };
+  }
+  if (lowest >= repMax) return { kind: "increase", weight_kg: roundToStep(last.weight + step, step / 2), reps: repMin, from_kg: last.weight };
+  if (highest < repMin && last.weight - step > 0) return { kind: "lighter", weight_kg: roundToStep(last.weight - step, step / 2), reps: repMin };
+
+  // Stall: the last three sessions at the same weight without more total reps.
+  const recent = tops.slice(0, 3);
+  if (recent.length === 3 && recent.every((t) => t.weight === last.weight)) {
+    const total = (t: { reps: number[] }) => t.reps.reduce((a, b) => a + b, 0);
+    if (total(recent[0]) <= total(recent[2])) {
+      const lighter = Math.max(step, roundToStep(last.weight * 0.9, step));
+      if (lighter < last.weight) return { kind: "deload", weight_kg: lighter, reps: repMax, sessions: 3 };
+    }
+  }
+  return { kind: "reps", weight_kg: last.weight, reps: Math.min(repMax, lowest + 1) };
 }

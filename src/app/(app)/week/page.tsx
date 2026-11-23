@@ -16,7 +16,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
   const sp = await searchParams;
   const thisMonday = startOfWeek(today);
   const monday = isIsoDate(sp.start) && sp.start <= today ? startOfWeek(sp.start) : thisMonday;
-  const w = await weekSummary(monday, today);
+  const w = await weekSummary(monday, today, undefined, locale === "en" ? "en" : "de");
   const n = (v: number | null, d = 0) => (v === null ? "–" : formatNumber(v, locale, d));
   const range = `${formatDate(w.monday, locale, { day: "numeric", month: "short" })} – ${formatDate(w.sunday, locale, { day: "numeric", month: "short" })}`;
   const maxKcal = Math.max(1, ...w.days.map((d) => Math.max(d.kcal, d.target ?? 0, d.burn ?? 0)));
@@ -118,7 +118,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 
         <Card>
           <SectionTitle>{t.gaps.title}</SectionTitle>
-          <NutrientGaps result={w.gaps} t={t} locale={locale} limit={5} />
+          <NutrientGaps result={w.gaps} t={t} locale={locale} limit={5} foods={w.gapFoods} />
         </Card>
 
         <a href={claudeLink(prompt)} target="_blank" rel="noreferrer" className={cx(buttonClass("secondary"), "w-full")}>

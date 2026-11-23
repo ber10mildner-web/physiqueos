@@ -1,19 +1,20 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- signed URLs are short-lived; bypass the image optimizer on purpose */
 import { useRef, useState, useTransition } from "react";
-import { Camera, Columns2, Trash2, X } from "lucide-react";
+import { Camera, Columns2, ScanFace, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { POSES, type PhotoPose, type ProgressPhoto } from "@/lib/data/types";
-import { dayNumber } from "@/lib/body/weight";
 import { formatDate } from "@/lib/dates";
-import { formatNumber } from "@/lib/format";
+import { autoPair, defaultPose, weightNear } from "@/lib/body/photo-compare";
 import { Button, Card, EmptyState, Field, Input, Notice, Select, cx } from "@/components/ui";
 import { recordPhoto, deletePhoto } from "./actions";
 import { resizeImage } from "./resize";
+import { PhotoCompare } from "./photo-compare";
+import { PoseCamera } from "./pose-camera";
 
-export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: string; photos: ProgressPhoto[]; weightByDate: Record<string, number>; today: string }) {
+export function PhotoGallery({ userId, photos, trend, today }: { userId: string; photos: ProgressPhoto[]; trend: { date: string; average: number }[]; today: string }) {
   const { t, locale } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pose, setPose] = useState<PhotoPose>("front");
@@ -22,9 +23,20 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [compare, setCompare] = useState<string[] | null>(null);
+  const [camera, setCamera] = useState(false);
   const [, start] = useTransition();
 
   const visible = photos.filter((p) => filter === "all" || p.pose === filter);
+
+  async function upload(blob: Blob, width: number, height: number): Promise<boolean> {
+    const path = `${userId}/${crypto.randomUUID()}.jpg`;
+    const supabase = createClient();
+    const { error: upErr } = await supabase.storage.from("progress-photos").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    if (upErr) throw upErr;
+    const res = await recordPhoto({ storage_path: path, taken_on: date, pose, width, height });
+    if (!res.ok) throw new Error(res.error);
+    return true;
+  }
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -34,12 +46,7 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
     setUploading(true);
     try {
       const { blob, width, height } = await resizeImage(file);
-      const path = `${userId}/${crypto.randomUUID()}.jpg`;
-      const supabase = createClient();
-      const { error: upErr } = await supabase.storage.from("progress-photos").upload(path, blob, { contentType: "image/jpeg", upsert: false });
-      if (upErr) throw upErr;
-      const res = await recordPhoto({ storage_path: path, taken_on: date, pose, width, height });
-      if (!res.ok) throw new Error(res.error);
+      await upload(blob, width, height);
     } catch {
       setError(t.common.error);
     } finally {
@@ -47,6 +54,12 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
       if (fileRef.current) fileRef.current.value = "";
     }
   }
+
+  // newest photo of the chosen pose, as the see-through guide in the camera
+  const ghost = photos.find((p) => p.pose === pose && p.url)?.url ?? null;
+  const comparePose = filter === "all" ? defaultPose(photos) : filter;
+  const auto = autoPair(photos, comparePose);
+  const weightsOf = (pair: ProgressPhoto[]) => [weightNear(trend, pair[0].taken_on), weightNear(trend, pair[1].taken_on)] as [number | null, number | null];
 
   const toggleCompare = (id: string) =>
     setCompare((c) => {
@@ -75,36 +88,40 @@ export function PhotoGallery({ userId, photos, weightByDate, today }: { userId: 
           </Field>
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
-        <Button type="button" className="mt-3 w-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          <Camera className="size-5" />
-          {uploading ? t.photos.uploading : t.photos.upload}
-        </Button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button type="button" disabled={uploading} onClick={() => setCamera(true)}>
+            <ScanFace className="size-5" />
+            {t.photoCompare.camera}
+          </Button>
+          <Button type="button" variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <Camera className="size-5" />
+            {uploading ? t.photos.uploading : t.photos.upload}
+          </Button>
+        </div>
         {error && <div className="mt-3"><Notice tone="error">{error}</Notice></div>}
       </Card>
 
-      {pair && (
-        <Card className="p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="num text-sm text-muted">{fmt(t.photos.days, { n: dayNumber(pair[1].taken_on) - dayNumber(pair[0].taken_on) })}</span>
-            <button type="button" className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface-2" aria-label={t.photos.compareDone} onClick={() => setCompare(null)}>
-              <X className="size-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {pair.map((p, i) => (
-              <figure key={p.id}>
-                {p.url && <img src={p.url} alt="" className="aspect-[3/4] w-full rounded-2xl object-cover" />}
-                <figcaption className="mt-1.5 text-xs">
-                  <div className="font-medium">{i === 0 ? t.photos.before : t.photos.after}</div>
-                  <div className="text-muted">
-                    {formatDate(p.taken_on, locale)}
-                    {weightByDate[p.taken_on] !== undefined && <span className="num"> · {formatNumber(weightByDate[p.taken_on], locale, 1)} kg</span>}
-                  </div>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </Card>
+      {camera && (
+        <PoseCamera
+          ghostUrl={ghost}
+          onClose={() => setCamera(false)}
+          onCapture={async (blob, width, height) => {
+            setError(null);
+            try {
+              await upload(blob, width, height);
+              setCamera(false);
+            } catch {
+              setCamera(false);
+              setError(t.common.error);
+            }
+          }}
+        />
+      )}
+
+      {pair ? (
+        <PhotoCompare pair={[pair[0], pair[1]]} weights={weightsOf(pair)} onClose={() => setCompare(null)} />
+      ) : (
+        !compare && auto && <PhotoCompare pair={auto} weights={weightsOf(auto)} title={fmt(t.photoCompare.firstLatest, { pose: t.photos.poses[comparePose as PhotoPose] })} />
       )}
 
       {photos.length > 0 && (
