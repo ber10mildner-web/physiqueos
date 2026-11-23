@@ -45,6 +45,8 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Hinweis bei fehlenden Nährstoffen (Vergleich mit DGE-Referenzwerten, nur wenn genug Daten da sind)
 - [x] Eiweiß pro Mahlzeit (Ziel ≈ 0,4 g/kg pro Mahlzeit)
 - [x] Feedback 2026-11-22 Mittag: Essen für morgen und die nächsten 14 Tage eintragen, nach links wischen zum Löschen, bessere Lebensmittel-Bilder (lieber Anfangsbuchstabe als falsches Bild), jede Mahlzeit mit eigener Farbe, Favoriten-Leiste bei vollen Mahlzeiten eingeklappt
+- [x] Tipp aufs Lebensmittel-Bild im Tagebuch: kurze Nährstoff-Übersicht (kcal, Makros, Ballaststoffe mit % vom Tagesbedarf, Zucker, die 4 größten Vitamine/Mineralstoffe; „unbekannt“ statt 0) (Idee Leo, 2026-11-23)
+- [ ] Dieselbe Übersicht auch in der Suche, bei Favoriten und Rezept-Zutaten
 - [ ] Offline auch für Suche/Barcode (bräuchte eine lokale Lebensmittel-Datenbank auf dem Handy)
 - [ ] Echte Fotos statt Emoji für eigene Rezepte (Foto beim Rezept speichern)
 - [ ] Verbrauch automatisch lernen: aus Gewichtstrend und Essen den echten Verbrauch schätzen („adaptives TDEE“, siehe unten)
