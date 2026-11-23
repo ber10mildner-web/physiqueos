@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Star, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import type { DiaryEntry } from "@/lib/data/types";
@@ -8,12 +8,12 @@ import { formatNumber } from "@/lib/format";
 import { FoodIcon } from "@/components/food-icon";
 import { Button, Input, cx } from "@/components/ui";
 import { useMeals } from "@/components/meals-context";
-import { MEAL_COLORS } from "@/lib/meal-colors";
-import { deleteEntry, moveEntry, toggleFavorite, updateEntryAmount } from "./actions";
+import { deleteEntry, toggleFavorite, updateEntryAmount } from "./actions";
+import { useEntryDnd } from "./entry-dnd";
 
 /** Width of the red delete button revealed by swiping left. */
 const REVEAL = 88;
-/** Holding a row this long (without moving) opens "move to". */
+/** Holding a row this long (without moving) picks it up to drag it with the finger. */
 const LONG_PRESS_MS = 450;
 
 export function EntryRow({
@@ -25,8 +25,8 @@ export function EntryRow({
 }) {
   const { t, locale } = useI18n();
   const meals = useMeals();
+  const dnd = useEntryDnd();
   const [open, setOpen] = useState(false);
-  const [moving, setMoving] = useState(false);
   const [amount, setAmount] = useState(String(entry.amount_g));
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pending, start] = useTransition();
@@ -47,6 +47,19 @@ export function EntryRow({
   /** Time of the last swipe or long press: the click that may follow it must not open the row. */
   const swipedAt = useRef(0);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  // While the row is being dragged, the page must not scroll under the finger.
+  // Needs a non-passive native listener; React's touch listeners are passive.
+  const isDragging = dnd?.isDragging;
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el || !isDragging) return;
+    const block = (e: TouchEvent) => {
+      if (isDragging(entry.id) && e.cancelable) e.preventDefault();
+    };
+    el.addEventListener("touchmove", block, { passive: false });
+    return () => el.removeEventListener("touchmove", block);
+  }, [isDragging, entry.id]);
   const cancelPress = () => {
     if (pressTimer.current) clearTimeout(pressTimer.current);
     pressTimer.current = null;
@@ -61,17 +74,10 @@ export function EntryRow({
       }
     });
   };
-  const move = (meal: DiaryEntry["meal"]) => {
-    setRemoved(true);
-    start(async () => {
-      const res = await moveEntry(entry.id, meal);
-      if (!res.ok) setRemoved(false);
-    });
-  };
   if (removed) return null;
 
   return (
-    <li>
+    <li data-entry-id={entry.id} className={cx(dnd?.draggingId === entry.id && "opacity-30")}>
       {/* Only the row itself slides; the edit form below stays out of the swipe area. */}
       <div className="relative overflow-hidden">
         {dx < 0 && (
@@ -86,6 +92,7 @@ export function EntryRow({
           </button>
         )}
         <div
+          ref={rowRef}
           className={cx(
             "relative bg-surface select-none",
             !dragging && "transition-transform duration-200 ease-out",
@@ -104,14 +111,15 @@ export function EntryRow({
               active: false,
             };
             cancelPress();
-            if (dx === 0 && meals.slots.length > 1)
+            const row = e.currentTarget;
+            const y = e.clientY;
+            if (dx === 0 && dnd)
               pressTimer.current = setTimeout(() => {
                 pressTimer.current = null;
-                drag.current = null;
+                drag.current = null; // no swipe from here on: the finger drags the row
                 swipedAt.current = Date.now();
-                navigator.vibrate?.(15);
                 setOpen(false);
-                setMoving(true);
+                dnd.begin(entry, row, y);
               }, LONG_PRESS_MS);
           }}
           onContextMenu={(e) => e.preventDefault()}
@@ -153,8 +161,8 @@ export function EntryRow({
             className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-2/60"
             onClick={() => {
               if (Date.now() - swipedAt.current < 400) return;
+              if (dnd && Date.now() - dnd.lastDropAt() < 400) return;
               if (dx !== 0) return setDx(0);
-              if (moving) return setMoving(false);
               setOpen(!open);
             }}
             aria-expanded={open}
@@ -252,27 +260,8 @@ export function EntryRow({
           </Button>
         </form>
       )}
-      {open && meals.slots.length > 1 && (
-        <p className="-mt-1 px-4 pb-3 text-xs text-muted">{t.nutrition.moveHint}</p>
-      )}
-      {moving && meals.slots.length > 1 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
-          <span className="mr-1 text-xs text-muted">{t.nutrition.moveTo}</span>
-          {meals.slots
-            .filter((s) => s.key !== entry.meal)
-            .map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                disabled={pending}
-                onClick={() => move(s.key)}
-                className="flex h-8 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs font-medium text-text transition hover:bg-surface-3 active:scale-[0.97]"
-              >
-                <span className="size-2 rounded-full" style={{ background: MEAL_COLORS[s.key] }} />
-                {meals.name(s.key)}
-              </button>
-            ))}
-        </div>
+      {open && dnd && (
+        <p className="-mt-1 px-4 pb-3 text-xs text-muted">{meals.slots.length > 1 ? t.nutrition.moveHint : t.nutrition.sortHint}</p>
       )}
     </li>
   );
