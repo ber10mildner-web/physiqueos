@@ -16,7 +16,7 @@ import type { Ctx } from "@/lib/data";
 import { getDiary, getFood, getFoodByBarcode, getGoalOn, getPhotos, getProfile, getWeights, searchMyFoods } from "@/lib/data";
 import { logFoodEntry, upsertWeight } from "@/lib/data/mutations";
 import { addWater, getWater } from "@/lib/data/tracking";
-import { getRecipe, listRecipes, logRecipeEntry, saveRecipe } from "@/lib/data/recipes";
+import { getRecipe, listRecipes, logRecipeEntry, saveRecipe, saveRecipeIdea } from "@/lib/data/recipes";
 import { ensureRoutines } from "@/lib/data/routines";
 import { listCardioTemplates } from "@/lib/data/training";
 import { workoutMinutes } from "@/lib/training/calc";
@@ -36,6 +36,10 @@ import { NUTRIENT_KEYS, NUTRIENTS, sanitizeNutrients } from "@/lib/nutrition/nut
 import { sumItems } from "@/lib/nutrition/calc";
 import { recipeNutrition } from "@/lib/nutrition/recipe";
 import { addDays, isIsoDate, todayIn } from "@/lib/dates";
+import { RECIPE_TAGS, matchesFilters, recipeInsights } from "@/lib/recipes/insights";
+import { getRecipeIdea, ideaIngredients, listRecipeIdeas } from "@/lib/recipes/catalog";
+import de from "@/lib/i18n/de";
+import { fmt } from "@/lib/i18n";
 
 export const INSTRUCTIONS = `Sigma is the user's personal nutrition, body, training and wellbeing tracker (German/English).
 Conventions: dates are YYYY-MM-DD in the user's time zone (Europe/Berlin unless told otherwise). Food nutrients are per 100 g; amounts in grams.
@@ -58,6 +62,8 @@ Coach: get_overview -> coach has the goal weight, the weight trend as a line thr
 Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_day and get_period_summary report the target that applies to each day.
 
 Cardio machine photos: when the user asks you to read their machine/Stairmaster photos, call list_cardio_photos, look at each with get_cardio_photo, read only values that are visible on the display (time, level, floors, steps, kcal), and save them with set_cardio_machine_data. Sigma then combines them with the Garmin data into a best calorie estimate ("kcal_estimate" in get_training).
+
+Recipe ideas: list_recipe_ideas has simple dishes with tags (protein, fiber, light, skin, iron, omega3, calcium, vitamin_d, vegetarian, vegan) and short learning notes. Suggest ones that fit the user's goals or nutrient gaps; add_recipe_idea copies one into their recipes (ask first), then log_recipe. Say that bioavailability notes are rough rules of thumb.
 
 Skin and medication: log_skin and log_medication record what the user tells you. You may point out patterns, but never give medical advice or suggest changing medication; refer to a doctor.`;
 
@@ -270,10 +276,46 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
     return json(
       recipes.map((r) => {
         const n = recipeNutrition(r.ingredients, r.cooked_weight_g);
-        return { recipe_id: r.id, name: r.name, ingredients: r.ingredients.map((i) => `${i.amount_g} g ${i.name}`), total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown, partial_nutrients: n.partial };
+        const ins = recipeInsights(r.ingredients, r.cooked_weight_g, r.servings);
+        return { recipe_id: r.id, name: r.name, ingredients: r.ingredients.map((i) => `${i.amount_g} g ${i.name}`), total_weight_g: n.totalWeightG, per_100g: n.per100g, unknown_nutrients: n.unknown, partial_nutrients: n.partial, tags: ins.tags, rich_in: ins.richIn.map((x) => x.key) };
       }),
     );
   });
+
+  tool(
+    "list_recipe_ideas",
+    "Sigma's bundled recipe ideas (simple dishes; nutrient values from USDA SR28, never estimated) with filter tags, nutrients per serving and short learning notes (e.g. bioavailability rules of thumb). Optionally filter by tags (all must match). Use it to suggest dishes that fit the user's goals or nutrient gaps; add_recipe_idea copies one into the user's recipes.",
+    z.object({ tags: z.array(z.enum(RECIPE_TAGS)).optional() }),
+    async ({ tags }: { tags?: string[] }) => {
+      const out = listRecipeIdeas("de").flatMap((idea) => {
+        const ings = ideaIngredients(idea);
+        const ins = recipeInsights(ings, idea.cookedWeightG, idea.servings);
+        if (tags?.length && !matchesFilters(ins, tags)) return [];
+        const n = recipeNutrition(ings, idea.cookedWeightG);
+        const perServing = Object.fromEntries(Object.entries(n.total).map(([k, v]) => [k, Math.round((v / idea.servings) * 10) / 10]));
+        return [{
+          slug: idea.slug,
+          name: idea.name,
+          servings: idea.servings,
+          serving_weight_g: Math.round(n.totalWeightG / idea.servings),
+          ingredients: idea.ingredients.map((i) => `${i.amount_g} g ${i.food.name}`),
+          steps: idea.steps,
+          per_serving: perServing,
+          tags: ins.tags,
+          rich_in: ins.richIn.map((x) => x.key),
+          notes: ins.notes.map((x) => fmt(de.recipeIdeas.notes[x.key], x.vars ?? {})),
+        }];
+      });
+      return json({ ideas: out, note: "Bioavailability notes are rough rules of thumb, not measurements. Omega-3 is not measured; that tag comes from the ingredients." });
+    },
+  );
+
+  tool("add_recipe_idea", "Copy one of Sigma's recipe ideas (slug from list_recipe_ideas) into the user's recipes. Returns the recipe_id for log_recipe. Ask the user first.", z.object({ slug: z.string().max(100) }), async ({ slug }: { slug: string }) => {
+    const idea = getRecipeIdea(slug, "de");
+    if (!idea) return fail("unknown slug");
+    const res = await saveRecipeIdea(idea, `${de.recipeIdeas.adoptNote} · ${de.recipeIdeas.source}`, ctx);
+    return res.ok ? json({ ok: true, recipe_id: res.id, already_existed: res.existed }) : fail(res.error);
+  }, true);
 
   tool("get_training", "Workouts (with sets) and cardio in a range, plus the exercise library and plans.", z.object({ from: date, to: date }), async ({ from, to }: { from: string; to: string }) => {
     const [workouts, rawCardio, exercises, plans, templates] = await Promise.all([

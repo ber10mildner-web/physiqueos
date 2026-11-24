@@ -18,7 +18,7 @@ export function Page({ children, className }: { children: ReactNode; className?:
   );
 }
 
-export function PageHeader({ title, subtitle, action, back }: { title: string; subtitle?: ReactNode; action?: ReactNode; back?: { href: string; label: string } }) {
+export function PageHeader({ title, subtitle, action, back, wrapTitle }: { title: string; subtitle?: ReactNode; action?: ReactNode; back?: { href: string; label: string }; wrapTitle?: boolean }) {
   return (
     <header className="mb-5 flex items-end justify-between gap-3 pt-2">
       <div className="min-w-0">
@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, action, back }: { title: string; s
             ← {back.label}
           </Link>
         )}
-        <h1 className="truncate text-[28px] font-semibold tracking-tight">{title}</h1>
+        <h1 className={cx("text-[28px] font-semibold tracking-tight", wrapTitle ? "text-balance leading-tight" : "truncate")}>{title}</h1>
         {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}
       </div>
       {action}

@@ -119,3 +119,9 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - Kalender verknüpfen, z. B. geplante Trainings und Cardio-Tage im Handykalender (später)
 - Trading Journal verknüpfen. Vorschlag: als eigene kleine App, damit Sigma bei Körper und Gesundheit bleibt; Claude kann beide später gemeinsam auswerten
 - Eigener Claude-Chat direkt in Sigma (kostet API-Guthaben, ca. 2–10 Cent pro Frage). Entschieden 2026-11-20: vorerst kostenlos über die Claude-App
+
+## Rezepte & Wearables (2026-11-24)
+
+- [x] Rezeptbereich mit Filtern (Viel Protein, Ballaststoffe, unter 500 kcal, gut für die Haut, Eisen gut verwertbar, Omega-3, Calcium, Vitamin D, vegetarisch/vegan, „Passt zu deinen Lücken“) mit kurzer Erklärung und „Gut zu wissen“ zur Aufnahme (Bioverfügbarkeit nur als grobe Faustregel); 19 Rezeptideen mit USDA-Werten zum Übernehmen
+- [ ] Mehr Rezeptideen (z. B. Leos Lieblingsgerichte, Thermomix-Klassiker) und weitere Filter (z. B. „gut für den Schlaf“, „vor dem Training“)
+- [ ] Andere Wearables neben Garmin (Polar, Fitbit, Whoop, Apple Watch …): am besten über Apple Health bzw. Health Connect (Android). Braucht eine native App-Hülle, eine reine Web-App kommt da nicht ran. Strava ginge schon jetzt direkt. Angehen, wenn Sigma in den App Store soll.

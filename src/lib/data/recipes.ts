@@ -5,6 +5,7 @@ import { candidateSchema, dateSchema, mealSchema, upsertFood, type Result } from
 import { hasRequiredNutrients, sanitizeNutrients } from "@/lib/nutrition/nutrients";
 import { recipeNutrition } from "@/lib/nutrition/recipe";
 import type { Recipe, RecipeIngredient } from "./types";
+import type { RecipeIdea } from "@/lib/recipes/catalog";
 
 const RECIPE_COLUMNS = "id, name, notes, cooked_weight_g, servings, is_favorite, archived, updated_at";
 const INGREDIENT_COLUMNS = "id, recipe_id, position, food_id, name, brand, source, source_id, amount_g, nutrients_per_100g";
@@ -155,4 +156,26 @@ export async function logRecipeEntry(input: { recipeId: string; amount_g: number
     amount_g: Math.round(parsed.data.amount_g * 10) / 10,
   });
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * Copies one of Sigma's recipe ideas into the user's recipes (steps go into the
+ * notes). If a recipe with the same name exists, that one is returned instead.
+ */
+export async function saveRecipeIdea(idea: RecipeIdea, sourceNote: string, ctx?: Ctx): Promise<Result<{ id: string; existed: boolean }>> {
+  const c = await ctxOr(ctx);
+  const existing = (await listRecipes({}, c)).find((r) => r.name.trim().toLowerCase() === idea.name.toLowerCase());
+  if (existing) return { ok: true, id: existing.id, existed: true };
+  const notes = [...idea.steps.map((s, i) => `${i + 1}. ${s}`), "", sourceNote].join("\n");
+  const res = await saveRecipe(
+    {
+      name: idea.name,
+      notes,
+      servings: idea.servings,
+      cooked_weight_g: idea.cookedWeightG,
+      ingredients: idea.ingredients.map((i) => ({ food: { ...i.food, source: "usda" as const }, amount_g: i.amount_g })),
+    },
+    c,
+  );
+  return res.ok ? { ok: true, id: res.id, existed: false } : res;
 }
