@@ -72,6 +72,7 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
   - Gemeinsamer Produkt-Cache für Barcodes (heute speichert jeder Nutzer seine eigene Kopie)
   - Vercel Pro + Supabase Pro (Hobby/Free sind nicht für kommerzielle Nutzung bzw. haben Limits), Fehler-Monitoring, Backups
   - Bezahlmodell (z. B. Abo über Stripe), falls nicht nur über Affiliate verdient wird
+- [ ] **ChatGPT als kritischer Zweitprüfer (Idee Leo, 2026-11-24, geparkt bis Werbung/Launch):** ChatGPT baut keinen Code, sondern prüft kritisch gegen. Claude macht Audits im Code mit echten Belegen, Leo gibt die Ergebnisse an ChatGPT weiter (Leo ist der Bote, keine direkte Verbindung möglich). ChatGPT hatte schon berechtigte Punkte: Garmins private API ist nicht für kommerzielle Nutzung, Datenschutz bei Gesundheitsdaten, Aktivitätskalorien doppelt gezählt. Einführen, wenn Werbung bzw. Launch startet.
 
 ## Ideen von Claude
 
