@@ -71,15 +71,20 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [ ] **Andere Wearables (geparkt bis zur Store-App):** Apple Health (iPhone) bzw. Health Connect (Android) als Sammelstelle, dann geht fast jede Uhr (Garmin, Polar, Fitbit, Whoop, Oura …). Braucht eine native App-Hülle (z. B. Capacitor), weil eine reine Web-App nicht an Apple Health/Health Connect kommt. Schon jetzt ohne native App möglich: Strava (offizielle API, Aktivitäten von fast allen Uhren)
 - [ ] Weitere Körpermaße (Brust, Arme, Oberschenkel) neben der Taille
 - [ ] Kraft-Check im Defizit auch pro Übung anzeigen (welche Übung nachlässt)
+- [x] Nährwerttabelle abfotografieren, nur als Ausweg: wenn der Barcode nichts findet oder es keinen gibt (z. B. Bäckerbrot). Werte landen im Formular zum Prüfen
+- [x] Zwischenspeicher für Open Food Facts: zweiter Versuch, frühere Treffer aus dem Speicher, wenn OFF nicht antwortet
+- [ ] „Wie gestern“: gibt es schon (Mahlzeit bzw. ganzen Tag von gestern kopieren)
+- [ ] Pausen-Timer und Aufwärmsätze: von Leo abgelehnt (unnötig)
 
 ## Kommerzialisierung / für andere Leute
 
 - [ ] **Supplement-Empfehlungen mit Affiliate-Links (Idee Leo, 2026-11-21):** Sigma erkennt aus den Ernährungsdaten, welche Nährstoffe dauerhaft fehlen (z. B. Vitamin D im Winter, Omega 3 ohne Fisch, Magnesium), und schlägt passende Supplemente vor, mit Affiliate-Codes (Sigma verdient mit). Voraussetzungen: genug Tage mit Mikronährstoff-Daten (Abdeckung anzeigen), Referenzwerte (DGE/EFSA), vorsichtige Formulierung (keine Heilversprechen, Hinweis „kein Ersatz für ärztlichen Rat“), Affiliate-Links klar als Werbung kennzeichnen (Pflicht in DE/AT), Höchstmengen beachten (z. B. Vitamin D, Zink).
 - [ ] **Für andere Leute nutzbar machen.** Stand 2026-11-21: Die Grundlage ist da. Jede Tabelle hat eine Nutzer-ID und Row Level Security (jeder sieht nur seine Daten, mit Tests abgesichert), Login per E-Mail-Link, Deutsch/Englisch, Claude-Zugang pro Nutzer mit eigenem Token. Was für echte Fremdnutzer noch fehlt:
+  - **Vor dem Launch ausmisten (Leo, 2026-11-24):** Was Leo selbst ein paar Wochen nicht benutzt, fliegt raus oder wandert in die Einstellungen; doppelte Funktionen zusammenlegen. Neue Nutzer sehen am Anfang nur Essen, Gewicht und Training, der Rest kommt nach und nach dazu
   - Registrierung öffnen + Onboarding (Ziel, Größe, Gewicht in 3 Schritten)
   - Datenschutzerklärung, Impressum, AGB, Daten-Export und Konto löschen (DSGVO)
   - Garmin-Abgleich ist inoffiziell und läuft über ein Skript am PC: für andere Nutzer offiziell über Strava oder die Garmin-Developer-API (nur für Firmen)
-  - Gemeinsamer Produkt-Cache für Barcodes (heute speichert jeder Nutzer seine eigene Kopie)
+  - Gemeinsamer Produkt-Cache für Barcodes (seit 2026-11-24 gibt es einen geteilten Open-Food-Facts-Speicher; eigene Lebensmittel bleiben pro Nutzer)
   - Vercel Pro + Supabase Pro (Hobby/Free sind nicht für kommerzielle Nutzung bzw. haben Limits), Fehler-Monitoring, Backups
   - Bezahlmodell (z. B. Abo über Stripe), falls nicht nur über Affiliate verdient wird
 - [ ] **ChatGPT als kritischer Zweitprüfer (Idee Leo, 2026-11-24, geparkt bis Werbung/Launch):** ChatGPT baut keinen Code, sondern prüft kritisch gegen. Claude macht Audits im Code mit echten Belegen, Leo gibt die Ergebnisse an ChatGPT weiter (Leo ist der Bote, keine direkte Verbindung möglich). ChatGPT hatte schon berechtigte Punkte: Garmins private API ist nicht für kommerzielle Nutzung, Datenschutz bei Gesundheitsdaten, Aktivitätskalorien doppelt gezählt. Einführen, wenn Werbung bzw. Launch startet.

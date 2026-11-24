@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { searchMyFoods } from "@/lib/data";
-import { searchOff } from "@/lib/food-sources/openfoodfacts";
+import { searchOffCached } from "@/lib/food-sources/off-cache-store";
 import { searchUsda } from "@/lib/food-sources/usda";
 import { searchBasic } from "@/lib/food-sources/basic";
 import type { FoodCandidate, FoodSource } from "@/lib/food-sources/types";
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   if (!data?.claims?.sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const locale = await getLocale();
-  const [mine, off, usda] = await Promise.allSettled([searchMyFoods(q), searchOff(q, locale), searchUsda(q)]);
+  const [mine, off, usda] = await Promise.allSettled([searchMyFoods(q), searchOffCached(q, locale), searchUsda(q)]);
   const unavailable: FoodSource[] = [];
   const val = (r: PromiseSettledResult<FoodCandidate[]>, s: FoodSource) => {
     if (r.status === "fulfilled") return r.value;

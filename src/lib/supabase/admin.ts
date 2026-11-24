@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Server-only client with the Supabase secret key. It bypasses Row Level
  * Security, so it is ONLY used by the MCP endpoint after a personal access
- * token has been verified, and every query filters by that token's user id.
+ * token has been verified (every query filters by that token's user id), and
+ * for the shared Open Food Facts cache (public product data, no user data).
  */
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

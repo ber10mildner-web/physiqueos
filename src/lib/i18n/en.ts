@@ -194,6 +194,22 @@ const en: Dictionary = {
     meal: "Meal",
     date: "Date",
   },
+  labelPhoto: {
+    button: "Photograph nutrition label",
+    gallery: "Photo from gallery",
+    hint: "No barcode or not found? Take a photo of the nutrition table and Sigma fills in the values.",
+    reading: "Reading the nutrition table …",
+    filled: "Values taken from the photo. Please check them and add the name.",
+    scaled: "The package only showed values per portion. They were converted to 100 g.",
+    errors: {
+      budget: "This month's AI photo budget is used up. Please enter the values yourself.",
+      daily_limit: "Today's limit for photo recognition is reached.",
+      unreadable: "I couldn't read a nutrition table in this photo. Try closer and sharper.",
+      no_serving: "The package only shows values per portion but no portion size. Please enter the values yourself.",
+      image: "The image could not be processed.",
+      api: "Reading didn't work just now. Please try again.",
+    },
+  },
   scanner: {
     start: "Start camera",
     stop: "Stop camera",

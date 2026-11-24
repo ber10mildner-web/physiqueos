@@ -140,3 +140,33 @@ describe("sanitizeNutrients", () => {
     expect(sanitizeNutrients(null)).toEqual({});
   });
 });
+
+describe("offGet retry", () => {
+  it("retries once on server errors and network failures, not on 404 or 429", async () => {
+    const { offGet } = await import("./openfoodfacts");
+    const ok = new Response("{}", { status: 200 });
+    let calls = 0;
+    const flaky = (async () => (++calls === 1 ? new Response("", { status: 503 }) : ok)) as unknown as typeof fetch;
+    expect((await offGet("https://x", 1000, 0, flaky)).status).toBe(200);
+    expect(calls).toBe(2);
+
+    calls = 0;
+    const offline = (async () => {
+      calls++;
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    await expect(offGet("https://x", 1000, 0, offline)).rejects.toThrow("fetch failed");
+    expect(calls).toBe(2);
+
+    calls = 0;
+    const limited = (async () => {
+      calls++;
+      return new Response("", { status: 429 });
+    }) as unknown as typeof fetch;
+    await expect(offGet("https://x", 1000, 0, limited)).rejects.toThrow("HTTP 429");
+    expect(calls).toBe(1);
+
+    const missing = (async () => new Response("", { status: 404 })) as unknown as typeof fetch;
+    expect((await offGet("https://x", 1000, 0, missing)).status).toBe(404);
+  });
+});

@@ -197,6 +197,22 @@ const de = {
     meal: "Mahlzeit",
     date: "Datum",
   },
+  labelPhoto: {
+    button: "Nährwerttabelle abfotografieren",
+    gallery: "Foto aus der Galerie",
+    hint: "Kein Barcode oder nicht gefunden? Foto von der Nährwerttabelle, Sigma füllt die Werte aus.",
+    reading: "Lese die Nährwerttabelle …",
+    filled: "Werte vom Foto übernommen. Bitte kurz prüfen und den Namen ergänzen.",
+    scaled: "Auf der Packung standen nur Werte pro Portion. Sie wurden auf 100 g umgerechnet.",
+    errors: {
+      budget: "Das Monatsbudget für KI-Fotos ist aufgebraucht. Trag die Werte bitte selbst ein.",
+      daily_limit: "Für heute ist das Limit an Foto-Erkennungen erreicht.",
+      unreadable: "Auf dem Foto konnte ich keine Nährwerttabelle lesen. Versuch es näher und schärfer.",
+      no_serving: "Auf der Packung stehen nur Werte pro Portion, aber keine Portionsgröße. Trag die Werte bitte selbst ein.",
+      image: "Das Bild konnte nicht verarbeitet werden.",
+      api: "Das Lesen hat gerade nicht geklappt. Bitte nochmal versuchen.",
+    },
+  },
   scanner: {
     start: "Kamera starten",
     stop: "Kamera stoppen",
