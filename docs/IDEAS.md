@@ -62,6 +62,16 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [ ] Wochentage im Kalorien-Check getrennt lernen (z. B. Cardio-Tage)
 - [ ] Pose-Kamera: Erinnerung jeden Sonntag
 
+## Ideen-Runde 2026-11-24 (Leo + Claude)
+
+- [x] Ziel statt nur Zielgewicht: „Fett verlieren, Muskeln halten“, Recomp, Muskeln aufbauen, Halten; Trainingsstand; eigene Situation als Freitext (liest Claude mit). Kalorien und Eiweiß richten sich danach (Fettverlust ≈ 0,5 % Körpergewicht pro Woche, 2,2 g Eiweiß pro kg)
+- [x] Taillenumfang als zweite Messgröße (zeigt Fettverlust ehrlicher als die Waage)
+- [x] Wochen-Check-in am Sonntag: Gewichtstrend gegen geplantes Tempo, Taille, Kraft (bestes geschätztes 1RM, letzte 2 gegen die 4 Wochen davor), Eiweiß, Foto, mit Gesamturteil und Kalorien-Vorschlag
+- [ ] Rezeptbereich mit Filtern („viel Eiweiß“, „Ballaststoffe“, „gut für die Haut“ mit Zink, Vitamin A/C, Omega-3 und kurzer Erklärung warum); Bioverfügbarkeit nur grob (z. B. tierisches vs. pflanzliches Eisen)
+- [ ] **Andere Wearables (geparkt bis zur Store-App):** Apple Health (iPhone) bzw. Health Connect (Android) als Sammelstelle, dann geht fast jede Uhr (Garmin, Polar, Fitbit, Whoop, Oura …). Braucht eine native App-Hülle (z. B. Capacitor), weil eine reine Web-App nicht an Apple Health/Health Connect kommt. Schon jetzt ohne native App möglich: Strava (offizielle API, Aktivitäten von fast allen Uhren)
+- [ ] Weitere Körpermaße (Brust, Arme, Oberschenkel) neben der Taille
+- [ ] Kraft-Check im Defizit auch pro Übung anzeigen (welche Übung nachlässt)
+
 ## Kommerzialisierung / für andere Leute
 
 - [ ] **Supplement-Empfehlungen mit Affiliate-Links (Idee Leo, 2026-11-21):** Sigma erkennt aus den Ernährungsdaten, welche Nährstoffe dauerhaft fehlen (z. B. Vitamin D im Winter, Omega 3 ohne Fisch, Magnesium), und schlägt passende Supplemente vor, mit Affiliate-Codes (Sigma verdient mit). Voraussetzungen: genug Tage mit Mikronährstoff-Daten (Abdeckung anzeigen), Referenzwerte (DGE/EFSA), vorsichtige Formulierung (keine Heilversprechen, Hinweis „kein Ersatz für ärztlichen Rat“), Affiliate-Links klar als Werbung kennzeichnen (Pflicht in DE/AT), Höchstmengen beachten (z. B. Vitamin D, Zink).
@@ -79,7 +89,7 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Tatsächlichen Kalorienverbrauch aus Gewichtstrend + gegessenen Kalorien berechnen („adaptives TDEE“) und das Ziel nachjustieren (2026-11-23: Vorschlag, du bestätigst)
 - [x] Wöchentlicher Check-in: Gewichtstrend vs. Ziel der Phase (z. B. Diät: −0,5 bis −1 % Körpergewicht pro Woche)
 - [x] Mikronährstoff-Ampel gegen Referenzwerte (DGE), mit Hinweis welche Lebensmittel fehlen (2026-11-22: Nährstoff-Hinweise)
-- Körpermaße (Taille, Brust, Arme, Oberschenkel) mit Verlauf
+- [~] Körpermaße (Taille, Brust, Arme, Oberschenkel) mit Verlauf (2026-11-24: Taille)
 - Foto-Erinnerung (z. B. jeden Sonntag morgens, gleiche Pose)
 - Portionsgrößen pro Lebensmittel merken („meine Portion Haferflocken = 80 g“)
 - Mahlzeiten-Vorlagen (z. B. „Frühstück Standard“ mit einem Tipp eintragen)

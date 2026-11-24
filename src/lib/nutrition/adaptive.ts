@@ -11,8 +11,9 @@ import { weightRate, wantedRate, type Rate } from "@/lib/body/forecast";
 import type { WeightPoint } from "@/lib/body/weight";
 import { addDays } from "@/lib/dates";
 import type { GoalTargets } from "./goal-days";
+import { KCAL_PER_KG, goalAim, type GoalType, type TrainingLevel } from "@/lib/body/goals";
 
-export const KCAL_PER_KG = 7700;
+export { KCAL_PER_KG };
 /** Days looked at (ending yesterday, so today's half-logged day is never used). */
 export const WINDOW_DAYS = 28;
 /** Fully logged days needed. */
@@ -77,7 +78,7 @@ export interface TargetSuggestion {
   /** Signed pace the suggestion aims for (kg/week). */
   aimKgPerWeek: number;
   /** Where the pace comes from. */
-  aimSource: "goal_weight" | "phase";
+  aimSource: "goal_type" | "goal_weight" | "phase";
   /** Average daily kcal the user should eat. */
   idealKcal: number;
   /** Current weekly average target. */
@@ -113,13 +114,23 @@ export function suggestTarget(input: {
   goalWeightKg: number | null;
   paceKgWeek: number | null;
   phase: string;
+  /** The body goal; when set it decides the pace (goal weight then only acts as a stop). */
+  goalType?: GoalType | null;
+  trainingLevel?: TrainingLevel | null;
   base: GoalTargets;
   alt: GoalTargets | null;
   altDays: number[];
   floorKcal: number;
 }): TargetSuggestion | null {
-  let aim = wantedRate(input.currentWeight, input.goalWeightKg, input.paceKgWeek);
-  let aimSource: TargetSuggestion["aimSource"] = "goal_weight";
+  let aim: number | null;
+  let aimSource: TargetSuggestion["aimSource"];
+  if (input.goalType) {
+    aim = goalAim({ goal: input.goalType, level: input.trainingLevel ?? null, currentKg: input.currentWeight, goalWeightKg: input.goalWeightKg, paceKgWeek: input.paceKgWeek });
+    aimSource = "goal_type";
+  } else {
+    aim = wantedRate(input.currentWeight, input.goalWeightKg, input.paceKgWeek);
+    aimSource = "goal_weight";
+  }
   if (aim === null) {
     const pct = PHASE_PACE_PCT[input.phase] ?? null;
     if (pct === null) return null;

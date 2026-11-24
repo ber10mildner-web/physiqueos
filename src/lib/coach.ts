@@ -14,6 +14,7 @@ import { ageFromBirthDate, bmrMifflinStJeor } from "@/lib/nutrition/energy";
 import { WINDOW_DAYS, estimateTdee, suggestTarget, type DayIntake, type TargetSuggestion, type TdeeResult } from "@/lib/nutrition/adaptive";
 import { forecastLine, goalEta, wantedRate, weightRate, type Eta, type Rate } from "@/lib/body/forecast";
 import type { WeightPoint } from "@/lib/body/weight";
+import { goalAim } from "@/lib/body/goals";
 
 export interface Coach {
   goal: BodyGoal;
@@ -22,7 +23,7 @@ export interface Coach {
   /** Smoothed current weight (fitted line, else the latest weigh-in). */
   current: number | null;
   eta: Eta | null;
-  /** Signed wanted pace from goal weight and pace (kg/week). */
+  /** Signed pace Sigma aims for (kg/week): from the goal type, else from goal weight and pace. */
   wanted: number | null;
   forecast: WeightPoint[];
   tdee: TdeeResult;
@@ -60,7 +61,12 @@ export function buildCoach(input: CoachInput): Coach {
   const current = rate?.fittedNow ?? points.at(-1)?.weight ?? null;
   const goalKg = bodyGoal.goal_weight_kg;
   const eta = rate && goalKg !== null ? goalEta(rate.fittedNow, goalKg, rate.kgPerWeek, today) : null;
-  const wanted = current !== null ? wantedRate(current, goalKg, bodyGoal.goal_pace_kg_week) : null;
+  const wanted =
+    current === null
+      ? null
+      : bodyGoal.goal_type
+        ? goalAim({ goal: bodyGoal.goal_type, level: bodyGoal.training_level, currentKg: current, goalWeightKg: goalKg, paceKgWeek: bodyGoal.goal_pace_kg_week })
+        : wantedRate(current, goalKg, bodyGoal.goal_pace_kg_week);
 
   const goalOn = (d: string) => {
     const g = input.goals.filter((x) => x.valid_from <= d).at(-1) ?? null;
@@ -82,6 +88,8 @@ export function buildCoach(input: CoachInput): Coach {
           goalWeightKg: goalKg,
           paceKgWeek: bodyGoal.goal_pace_kg_week,
           phase: g.phase,
+          goalType: bodyGoal.goal_type,
+          trainingLevel: bodyGoal.training_level,
           base: g.base,
           alt: g.alt,
           altDays: g.alt_days,

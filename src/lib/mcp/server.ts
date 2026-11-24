@@ -1,4 +1,7 @@
 import { loadCoach } from "@/lib/coach";
+import { loadProgress } from "@/lib/progress-data";
+import { upsertWaist } from "@/lib/data/body-goal";
+import { proteinPerKg } from "@/lib/body/goals";
 import "server-only";
 /**
  * MCP server for Claude. Every tool runs as the user who owns the personal
@@ -47,6 +50,8 @@ Weekly review: call get_period_summary for the last 7 days (and optionally the 7
 Routines: the user can set up repeatable cardio (cardio_routines in get_training, e.g. an incline walk on fixed weekdays) and supplements that are logged automatically. Supplements with nutrients appear as diary entries (meal "snack") and count towards the daily totals.
 
 Meals: slots are breakfast, pre_workout, post_workout, lunch, dinner, snack. The user can rename and hide them (get_overview → profile.meal_slots; e.g. "snack" may be called "Supplemente"); use their names when talking to them.
+
+Body goal: get_overview -> coach.body_goal has what the user is after (goal_type: fat_loss = lose fat while keeping muscle, recomp, muscle_gain, maintain), their training level and their own description of their situation (situation_note). Judge progress against that goal, not against the scale alone: in a cut, a falling waist with stable strength is success even when the weight moves slowly. coach.progress is Sigma's weekly check-in (weight trend vs. planned pace, waist change, strength change as median best estimated 1RM of the last 2 weeks vs. the 4 weeks before, protein vs. target, last progress photo) with a verdict. When the user tells you their waist measurement, save it with log_waist.
 
 Coach: get_overview -> coach has the goal weight, the weight trend as a line through the last 4 weeks of weigh-ins (kg/week), a goal date forecast, the measured maintenance calories (average intake of fully logged days minus the energy stored or lost according to the trend, 7700 kcal per kg) and Sigma's calorie suggestion. Use these numbers in reviews instead of computing your own, and mention that they are estimates with the given confidence.
 
@@ -154,11 +159,12 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
   // ---------- read ----------
   tool(
     "get_overview",
-    "Profile, current nutrition goal, latest weight, today's date, and the coach: goal weight with forecast, measured maintenance calories (adaptive TDEE) and Sigma's calorie suggestion.",
+    "Profile, current nutrition goal, latest weight, today's date, and the coach: body goal (goal type, training level, the user's situation), goal weight with forecast, measured maintenance calories (adaptive TDEE), Sigma's calorie suggestion and the weekly progress check-in (weight, waist, strength, protein, photos).",
     z.object({}),
     async () => {
       const [profile, goal, weights] = await Promise.all([getProfile(ctx), getGoalOn(today(), ctx), getWeights(addDays(today(), -30), ctx)]);
       const coach = await loadCoach(today(), ctx, { profile, goalToday: goal });
+      const progress = await loadProgress(today(), coach, ctx);
       const r2 = (v: number) => Math.round(v * 100) / 100;
       return json({
         today: today(),
@@ -166,6 +172,19 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
         current_goal: goal,
         recent_weights: weights.slice(-10),
         coach: {
+          body_goal: {
+            goal_type: coach.goal.goal_type,
+            training_level: coach.goal.training_level,
+            situation_note: coach.goal.goal_note,
+            protein_g_per_kg: coach.goal.goal_type ? proteinPerKg(coach.goal.goal_type) : null,
+          },
+          progress: {
+            verdict: progress.verdict,
+            signals: progress.signals.map((x) => ({ signal: x.key, status: x.status, finding: x.msg, ...x.values })),
+            waist: progress.waist ? { latest_cm: progress.waist.latest, measured_on: progress.waist.latestDate, change_cm: progress.waist.change, over_days: progress.waist.days } : null,
+            strength: progress.strength ? { median_change_pct: progress.strength.changePct, exercises_compared: progress.strength.exercises, stronger: progress.strength.up, weaker: progress.strength.down } : null,
+            last_progress_photo: progress.lastPhotoDate,
+          },
           goal_weight_kg: coach.goal.goal_weight_kg,
           wanted_pace_kg_per_week: coach.wanted,
           trend_kg_per_week: coach.rate ? r2(coach.rate.kgPerWeek) : null,
@@ -361,6 +380,11 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
 
   tool("log_weight", "Log body weight (kg) for a day (replaces that day's value).", z.object({ weight_kg: z.number().min(20).max(400), date: date.optional() }), async (a: { weight_kg: number; date?: string }) => {
     const res = await upsertWeight({ date: a.date ?? today(), weight_kg: a.weight_kg }, ctx);
+    return res.ok ? json({ ok: true }) : fail(res.error);
+  }, true);
+
+  tool("log_waist", "Log waist circumference (cm, at belly button height) for a day (replaces that day's value).", z.object({ waist_cm: z.number().min(40).max(200), date: date.optional() }), async (a: { waist_cm: number; date?: string }) => {
+    const res = await upsertWaist({ date: a.date ?? today(), waist_cm: a.waist_cm, source: "claude" }, ctx);
     return res.ok ? json({ ok: true }) : fail(res.error);
   }, true);
 

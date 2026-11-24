@@ -37,7 +37,7 @@ export default async function SettingsPage() {
       <div className="space-y-4">
         <Card>
           <SectionTitle>{t.settings.goals}</SectionTitle>
-          <GoalForm profile={profile} latestWeightKg={weight?.weight_kg ?? null} goal={goal} today={today} />
+          <GoalForm profile={profile} latestWeightKg={weight?.weight_kg ?? null} goal={goal} today={today} bodyGoal={coach.goal} />
         </Card>
         <CoachCard coach={coach} always />
         <Card>

@@ -16,6 +16,10 @@ import { nutrientGaps } from "@/lib/nutrition/gaps";
 import { eatenFoods, suggestGapFoods } from "@/lib/nutrition/gap-foods";
 import { loadCoach } from "@/lib/coach";
 import { CoachCard } from "@/components/coach-card";
+import { CheckinCard } from "@/components/checkin-card";
+import { loadProgress } from "@/lib/progress-data";
+import { goalLabel } from "@/lib/body/goal-label";
+import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { GoalStatus } from "@/components/goal-status";
 import { scheduleFor } from "@/lib/training/schedule";
 import { movingAverage, trendChange } from "@/lib/body/weight";
@@ -68,6 +72,9 @@ export default async function DashboardPage() {
   const eaten = eatenFoods(entries.filter((e) => e.entry_date >= addDays(today, -28) && e.entry_date < today));
   const gapFoods = Object.fromEntries(gaps.gaps.slice(0, 2).map((g) => [g.key, suggestGapFoods(g, eaten, lang)]));
   const coach = await loadCoach(today, undefined, { weights, entries, goals, goalToday: goal, profile });
+  // Sunday: weekly check-in (weight, waist, strength, protein, photos against the goal)
+  const isSunday = isoWeekday(today) === 7;
+  const progress = isSunday ? await loadProgress(today, coach, undefined, entries) : null;
 
   // this week so far
   const weekDays = [...new Set(entries.filter((e) => e.entry_date >= monday).map((e) => e.entry_date))];
@@ -183,6 +190,8 @@ export default async function DashboardPage() {
             <GoalStatus coach={coach} t={t} locale={locale} compact />
           </Card>
         </Link>
+
+        {progress && <CheckinCard progress={progress} goalLabel={goalLabel(coach.goal, t)} t={t} locale={locale} variant="sunday" />}
 
         <CoachCard coach={coach} />
 

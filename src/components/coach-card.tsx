@@ -89,7 +89,10 @@ export function CoachCard({ coach, always = false }: { coach: Coach; always?: bo
             })}
           </div>
           <p className="num mt-2 text-xs text-muted">
-            {fmt(s.aimSource === "goal_weight" ? t.coach.aimGoal : t.coach.aimPhase, { aim: signed(s.aimKgPerWeek, locale, 2) })}{" "}
+            {fmt(s.aimSource === "goal_type" ? t.coach.aimGoalType : s.aimSource === "goal_weight" ? t.coach.aimGoal : t.coach.aimPhase, {
+              aim: signed(s.aimKgPerWeek, locale, 2),
+              goal: coach.goal.goal_type ? t.bodyGoal.types[coach.goal.goal_type] : "",
+            })}{" "}
             {Math.abs(s.idealKcal - s.currentKcal) > Math.abs(s.change) + 10 ? t.coach.capped : ""} {t.coach.macros}
           </p>
           {status === "error" && (
@@ -132,7 +135,7 @@ export function CoachCard({ coach, always = false }: { coach: Coach; always?: bo
         </div>
       ) : est ? (
         <p className="mt-2 text-xs text-muted">
-          {!coach.nutritionGoal ? t.coach.noGoal : coach.nutritionGoal.phase === "custom" && coach.goal.goal_weight_kg === null ? t.coach.noPace : t.coach.noChange}
+          {!coach.nutritionGoal ? t.coach.noGoal : coach.nutritionGoal.phase === "custom" && coach.goal.goal_weight_kg === null && !coach.goal.goal_type ? t.coach.noPace : t.coach.noChange}
         </p>
       ) : null}
       <p className="mt-2 text-[11px] text-faint">{t.coach.hint}</p>

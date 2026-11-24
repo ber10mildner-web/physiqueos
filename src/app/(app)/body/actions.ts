@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getToday, requireUser } from "@/lib/auth";
 import { upsertWeight } from "@/lib/data/mutations";
 import { upsertHealth } from "@/lib/data/health";
-import { saveBodyGoal } from "@/lib/data/body-goal";
+import { deleteWaist, saveBodyGoal, upsertWaist, type BodyGoal } from "@/lib/data/body-goal";
 import { archiveMedication, saveMedication, setMedicationTaken, upsertSkin } from "@/lib/data/wellbeing";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -87,10 +87,21 @@ export async function archiveMedicationAction(id: string): Promise<ActionResult>
   return res;
 }
 
-/** Goal weight and wanted pace (kg/week). Empty goal weight clears both. */
-export async function saveBodyGoalAction(input: { goal_weight_kg: number | null; goal_pace_kg_week: number | null }): Promise<ActionResult> {
-  const goal = input.goal_weight_kg;
-  const res = await saveBodyGoal({ goal_weight_kg: goal, goal_pace_kg_week: goal === null ? null : input.goal_pace_kg_week }, await requireUser());
+/** The body goal: goal type, training level, pace, optional goal weight and the user's own description. */
+export async function saveBodyGoalAction(input: BodyGoal): Promise<ActionResult> {
+  const res = await saveBodyGoal(input, await requireUser());
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
+}
+
+export async function saveWaistAction(input: { date: string; waist_cm: number }): Promise<ActionResult> {
+  const res = await upsertWaist({ ...input, source: "manual" }, await requireUser());
+  if (res.ok) revalidatePath("/", "layout");
+  return res;
+}
+
+export async function deleteWaistAction(id: string): Promise<ActionResult> {
+  const res = await deleteWaist(id, await requireUser());
   if (res.ok) revalidatePath("/", "layout");
   return res;
 }

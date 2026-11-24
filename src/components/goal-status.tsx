@@ -32,7 +32,7 @@ export function GoalStatus({ coach, t, locale, compact = false }: { coach: Coach
   }
 
   let planText: string | null = null;
-  if (rate && wanted !== null && wanted !== 0) {
+  if (rate && wanted !== null && wanted !== 0 && goal.goal_type !== "recomp") {
     const diff = rate.kgPerWeek / wanted; // > 1 faster, < 1 slower
     planText = diff > 1.25 ? t.forecast.faster : diff < 0.75 ? t.forecast.slower : t.forecast.onPlan;
   }
@@ -71,6 +71,12 @@ export function GoalStatus({ coach, t, locale, compact = false }: { coach: Coach
               {planText && ` · ${planText}`}
             </div>
           )}
+        </div>
+      )}
+      {goalKg === null && wanted !== null && wanted !== 0 && (
+        <div className="num text-xs text-muted">
+          {fmt(t.forecast.planned, { rate: signed(wanted, locale) })}
+          {planText && ` · ${planText}`}
         </div>
       )}
       {rate && <p className="text-[11px] text-faint">{fmt(t.forecast.rateBasis, { n: rate.samples, days: rate.spanDays + 1 })}</p>}
