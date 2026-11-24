@@ -42,6 +42,16 @@ describe("suggestTarget", () => {
     expect(s.base.energy_kcal).toBe(2250);
     expect(s.base.protein_g).toBe(160);
   });
+  it("takes the pace from the body goal when one is set", () => {
+    // fat loss, no pace chosen: 0.5 % of 80 kg = 0.4 kg/week ≈ 440 kcal below 2800
+    const s = suggestTarget({ estimate: est(2800), currentWeight: 80, goalWeightKg: null, paceKgWeek: null, phase: "custom", goalType: "fat_loss", trainingLevel: "intermediate", base, alt: null, altDays: [], floorKcal: 1700 })!;
+    expect(s.aimSource).toBe("goal_type");
+    expect(s.aimKgPerWeek).toBe(-0.4);
+    expect(s.idealKcal).toBe(2360);
+    // recomp ignores a goal weight's pace
+    const r = suggestTarget({ estimate: est(2800), currentWeight: 80, goalWeightKg: 70, paceKgWeek: 1, phase: "cut", goalType: "recomp", base, alt: null, altDays: [], floorKcal: 1700 })!;
+    expect(r.aimKgPerWeek).toBe(-0.16);
+  });
   it("caps big jumps and respects the floor", () => {
     const s = suggestTarget({ estimate: est(1800), currentWeight: 80, goalWeightKg: 70, paceKgWeek: 1, phase: "cut", base, alt: null, altDays: [], floorKcal: 1700 })!;
     expect(s.idealKcal).toBe(1700);

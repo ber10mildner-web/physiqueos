@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -226,6 +226,16 @@ describe("schema", () => {
       const seen = await as(B, () => db.query(`select * from public.${table}`));
       expect(seen.rows, table).toHaveLength(0);
     }
+  });
+
+  it("keeps waist measurements private and checks body goal values", async () => {
+    await as(A, () => db.exec(`insert into public.body_measurements (user_id, entry_date, waist_cm) values ('${A}', '2026-11-24', 84.5)`));
+    await expect(as(A, () => db.exec(`insert into public.body_measurements (user_id, entry_date, waist_cm) values ('${A}', '2026-11-25', 12)`))).rejects.toThrow(/check constraint/);
+    await expect(as(B, () => db.exec(`insert into public.body_measurements (user_id, entry_date, waist_cm) values ('${A}', '2026-11-26', 80)`))).rejects.toThrow(/row-level security/);
+    const seen = await as(B, () => db.query("select * from public.body_measurements"));
+    expect(seen.rows).toHaveLength(0);
+    await as(A, () => db.exec(`update public.profiles set goal_type = 'fat_loss', training_level = 'intermediate', goal_note = 'Fett weg, Kraft halten' where id = '${A}'`));
+    await expect(as(A, () => db.exec(`update public.profiles set goal_type = 'shred' where id = '${A}'`))).rejects.toThrow(/check constraint/);
   });
 
   it("stores training ratings and only accepts display photos in the owner's cardio folder", async () => {

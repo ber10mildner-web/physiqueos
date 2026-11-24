@@ -9,7 +9,11 @@ import { movingAverage, trendChange } from "@/lib/body/weight";
 import { Card, Page, PageHeader, SectionTitle, cx } from "@/components/ui";
 import { WeightForm } from "./weight-form";
 import { WeightChart } from "./weight-chart";
-import { GoalWeightForm } from "./goal-weight-form";
+import { BodyGoalForm } from "./body-goal-form";
+import { WaistCard } from "./waist-form";
+import { CheckinCard } from "@/components/checkin-card";
+import { loadProgress } from "@/lib/progress-data";
+import { goalLabel } from "@/lib/body/goal-label";
 import { GoalStatus } from "@/components/goal-status";
 import { loadCoach } from "@/lib/coach";
 import { WeightHistory } from "./weight-history";
@@ -39,6 +43,8 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
     getMedicationLogs(addDays(today, -13), today),
     loadCoach(today),
   ]);
+  const progress = await loadProgress(today, coach);
+  const label = goalLabel(coach.goal, t);
   const last14 = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
   const trend = movingAverage(weights.map((w) => ({ date: w.entry_date, weight: w.weight_kg })));
   const visible = from ? trend.filter((p) => p.date >= from) : trend;
@@ -89,18 +95,33 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
               <GoalStatus coach={coach} t={t} locale={locale} />
             </div>
           )}
-          <details className="group mt-3">
+        </Card>
+
+        <Card>
+          <SectionTitle>{t.bodyGoal.title}</SectionTitle>
+          <p className="text-sm text-muted">{label ?? t.bodyGoal.noGoal}</p>
+          {coach.goal.goal_note && <p className="mt-1 line-clamp-2 text-xs text-faint">{coach.goal.goal_note}</p>}
+          <details className="group mt-3" open={!coach.goal.goal_type}>
             <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-sm font-medium text-muted group-open:mb-3">
-              {coach.goal.goal_weight_kg === null ? t.goalWeight.set : t.goalWeight.edit}
+              {coach.goal.goal_type ? t.bodyGoal.edit : t.bodyGoal.set}
             </summary>
-            <GoalWeightForm goalKg={coach.goal.goal_weight_kg} paceKgWeek={coach.goal.goal_pace_kg_week} currentKg={coach.current === null ? null : Math.round(coach.current * 10) / 10} />
+            <BodyGoalForm goal={coach.goal} currentKg={coach.current === null ? null : Math.round(coach.current * 10) / 10} />
           </details>
         </Card>
+
+        <CheckinCard progress={progress} goalLabel={null} t={t} locale={locale} />
 
         <Card>
           <SectionTitle>{t.body.logWeight}</SectionTitle>
           <WeightForm today={today} defaultWeight={weights.at(-1)?.weight_kg ?? null} />
         </Card>
+
+        <div id="waist" className="scroll-mt-4">
+          <Card>
+            <SectionTitle>{t.waist.title}</SectionTitle>
+            <WaistCard today={today} trend={progress.waist} history={progress.waistPoints.map(({ id, date, waist_cm }) => ({ id, date, waist_cm }))} />
+          </Card>
+        </div>
 
         <Link href="/body/photos" className="block">
           <Card className="flex items-center gap-3 transition hover:bg-surface-2">

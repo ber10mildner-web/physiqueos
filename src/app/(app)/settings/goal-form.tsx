@@ -8,15 +8,32 @@ import { formatNumber } from "@/lib/format";
 import { shiftCarbs } from "@/lib/nutrition/goal-days";
 import { Button, Field, Input, Notice, cx } from "@/components/ui";
 import { saveGoal } from "./actions";
+import { phaseForGoal, suggestTargetsForGoal } from "@/lib/body/goals";
+import type { BodyGoal } from "@/lib/data/body-goal";
 
 const PHASES: Phase[] = ["cut", "maintenance", "lean_bulk", "custom"];
 type Key = keyof Targets;
 
-export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Profile | null; latestWeightKg: number | null; goal: NutritionGoal | null; today: string }) {
+export function GoalForm({
+  profile,
+  latestWeightKg,
+  goal,
+  today,
+  bodyGoal,
+}: {
+  profile: Profile | null;
+  latestWeightKg: number | null;
+  goal: NutritionGoal | null;
+  today: string;
+  bodyGoal: BodyGoal;
+}) {
   const { t, locale } = useI18n();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
-  const [phase, setPhase] = useState<Phase>(goal?.phase ?? "maintenance");
+  const goalType = bodyGoal.goal_type;
+  const [phase, setPhase] = useState<Phase>(goal?.phase ?? (goalType ? phaseForGoal(goalType) : "maintenance"));
+  // With a body goal the targets follow it; "custom" keeps the user's own numbers.
+  const fromGoal = goalType !== null && phase !== "custom";
   const [values, setValues] = useState<Record<Key, string>>({
     energy_kcal: goal ? String(goal.base.energy_kcal) : "",
     protein_g: goal ? String(goal.base.protein_g) : "",
@@ -44,17 +61,18 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
   const canCalculate = Boolean(profile?.sex && profile.birth_date && profile.height_cm && profile.activity_level && latestWeightKg);
   const suggestion = useMemo(() => {
     if (!canCalculate || phase === "custom") return null;
-    return suggestTargets(
-      {
-        sex: profile!.sex!,
-        ageYears: ageFromBirthDate(profile!.birth_date!),
-        heightCm: profile!.height_cm!,
-        weightKg: latestWeightKg!,
-        activity: profile!.activity_level!,
-      },
-      phase,
-    );
-  }, [canCalculate, phase, profile, latestWeightKg]);
+    const p = {
+      sex: profile!.sex!,
+      ageYears: ageFromBirthDate(profile!.birth_date!),
+      heightCm: profile!.height_cm!,
+      weightKg: latestWeightKg!,
+      activity: profile!.activity_level!,
+    };
+    if (goalType)
+      return suggestTargetsForGoal(p, { goal: goalType, level: bodyGoal.training_level, goalWeightKg: bodyGoal.goal_weight_kg, paceKgWeek: bodyGoal.goal_pace_kg_week });
+    return { ...suggestTargets(p, phase), aimKgPerWeek: null };
+  }, [canCalculate, phase, profile, latestWeightKg, goalType, bodyGoal]);
+  const splitPhase = (): Exclude<Phase, "custom"> | null => (phase === "custom" ? null : goalType ? phaseForGoal(goalType) : phase);
 
   const apply = (targets: Targets) =>
     setValues(Object.fromEntries(Object.entries(targets).map(([k, v]) => [k, String(v)])) as Record<Key, string>);
@@ -67,7 +85,8 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
   // When the user edits calories in a non-custom phase, re-split macros automatically.
   const onCalories = (v: string) => {
     const kcal = Number(v);
-    if (phase !== "custom" && latestWeightKg && kcal >= 800) apply(macrosForCalories(kcal, latestWeightKg, phase));
+    const split = splitPhase();
+    if (split && latestWeightKg && kcal >= 800) apply(macrosForCalories(kcal, latestWeightKg, split));
     setValues((s) => ({ ...s, energy_kcal: v }));
   };
 
@@ -83,27 +102,56 @@ export function GoalForm({ profile, latestWeightKg, goal, today }: { profile: Pr
       className="space-y-4"
       action={(fd) =>
         start(async () => {
-          fd.set("phase", phase);
+          fd.set("phase", splitPhase() ?? "custom");
           const res = await saveGoal(fd);
           setStatus(res.ok ? "saved" : "error");
         })
       }
     >
-      <div>
-        <span className="mb-1.5 block text-[13px] text-muted">{t.settings.phase}</span>
-        <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
-          {PHASES.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPhase(p)}
-              className={cx("h-10 rounded-xl px-1 text-[13px] font-medium transition", p === phase ? "bg-surface-3 text-text shadow" : "text-muted")}
-            >
-              {t.phases[p]}
-            </button>
-          ))}
+      {goalType ? (
+        <div>
+          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-surface-2 p-1">
+            {[
+              { on: fromGoal, label: t.settings.fromGoal, value: phaseForGoal(goalType) },
+              { on: !fromGoal, label: t.settings.ownValues, value: "custom" as Phase },
+            ].map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                onClick={() => setPhase(o.value)}
+                className={cx("h-10 rounded-xl px-1 text-[13px] font-medium transition", o.on ? "bg-surface-3 text-text shadow" : "text-muted")}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {fromGoal && suggestion?.aimKgPerWeek != null && (
+            <p className="num mt-1.5 text-xs text-muted">
+              {fmt(t.settings.goalBasis, {
+                goal: t.bodyGoal.types[goalType],
+                aim: `${suggestion.aimKgPerWeek > 0 ? "+" : suggestion.aimKgPerWeek < 0 ? "−" : ""}${formatNumber(Math.abs(suggestion.aimKgPerWeek), locale, 2)}`,
+              })}
+            </p>
+          )}
         </div>
-      </div>
+      ) : (
+        <div>
+          <span className="mb-1.5 block text-[13px] text-muted">{t.settings.phase}</span>
+          <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
+            {PHASES.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPhase(p)}
+                className={cx("h-10 rounded-xl px-1 text-[13px] font-medium transition", p === phase ? "bg-surface-3 text-text shadow" : "text-muted")}
+              >
+                {t.phases[p]}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-faint">{t.settings.noBodyGoal}</p>
+        </div>
+      )}
 
       {phase !== "custom" &&
         (suggestion ? (
