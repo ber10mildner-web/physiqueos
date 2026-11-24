@@ -5,8 +5,18 @@ import { fmt } from "@/lib/i18n";
 import { BARCODE_RE, type FoodCandidate } from "@/lib/food-sources/types";
 import { Button, Card, Field, Input, Notice } from "@/components/ui";
 import { BarcodeScanner } from "./barcode-scanner";
+import { LabelPhoto, type LabelRead } from "./label-photo";
 
-export function BarcodeTab({ onFound, onNotFound }: { onFound: (f: FoodCandidate) => void; onNotFound: (barcode: string) => void }) {
+export function BarcodeTab({
+  onFound,
+  onNotFound,
+  onLabel,
+}: {
+  onFound: (f: FoodCandidate) => void;
+  onNotFound: (barcode: string) => void;
+  /** Set when the nutrition-label photo is available; offered only when the barcode found nothing. */
+  onLabel?: (r: LabelRead, barcode: string | null) => void;
+}) {
   const { t } = useI18n();
   const [manual, setManual] = useState("");
   const [state, setState] = useState<{ kind: "idle" } | { kind: "loading"; code: string } | { kind: "notfound"; code: string } | { kind: "error" }>({ kind: "idle" });
@@ -30,11 +40,25 @@ export function BarcodeTab({ onFound, onNotFound }: { onFound: (f: FoodCandidate
     <div className="space-y-4">
       <BarcodeScanner onDetected={lookup} paused={state.kind === "loading"} />
       {state.kind === "loading" && <Notice>{t.scanner.looking}</Notice>}
-      {state.kind === "error" && <Notice tone="error">{t.common.error}</Notice>}
+      {state.kind === "error" && (
+        <Notice tone="error">
+          <p>{t.common.error}</p>
+          {onLabel && (
+            <div className="mt-3">
+              <LabelPhoto onRead={(r) => onLabel(r, null)} />
+            </div>
+          )}
+        </Notice>
+      )}
       {state.kind === "notfound" && (
         <Notice tone="warn">
           <p>{fmt(t.scanner.notFound, { code: state.code })}</p>
-          <Button type="button" size="sm" variant="secondary" className="mt-3" onClick={() => onNotFound(state.code)}>
+          {onLabel && (
+            <div className="mt-3">
+              <LabelPhoto onRead={(r) => onLabel(r, state.code)} />
+            </div>
+          )}
+          <Button type="button" size="sm" variant={onLabel ? "ghost" : "secondary"} className="mt-3" onClick={() => onNotFound(state.code)}>
             {t.scanner.createManual}
           </Button>
         </Notice>

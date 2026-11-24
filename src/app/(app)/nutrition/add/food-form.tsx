@@ -19,7 +19,7 @@ const parse = (s: string) => {
 };
 
 /** Manual food entry (values per 100 g). Empty fields are stored as unknown, never as 0. */
-export function FoodForm({ initial, onSubmit }: { initial: Partial<FoodCandidate> | null; onSubmit: (f: FoodCandidate) => void }) {
+export function FoodForm({ initial, onSubmit, top }: { initial: Partial<FoodCandidate> | null; onSubmit: (f: FoodCandidate) => void; top?: React.ReactNode }) {
   const { t, locale } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [brand, setBrand] = useState(initial?.brand ?? "");
@@ -79,6 +79,7 @@ export function FoodForm({ initial, onSubmit }: { initial: Partial<FoodCandidate
         });
       }}
     >
+      {top}
       <Card className="space-y-3">
         <SectionTitle>{t.foodForm.title}</SectionTitle>
         <Field label={`${t.foodForm.name} *`}>

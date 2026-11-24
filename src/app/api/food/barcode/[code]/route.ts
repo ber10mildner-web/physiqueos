@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getFoodByBarcode } from "@/lib/data";
-import { fetchOffProduct } from "@/lib/food-sources/openfoodfacts";
+import { lookupOffProduct } from "@/lib/food-sources/off-cache-store";
 import { BARCODE_RE, SourceUnavailableError, type FoodCandidate } from "@/lib/food-sources/types";
 import { getLocale } from "@/lib/i18n/server";
 
 /**
  * Barcode lookup: the user's own library first (instant, includes their custom
- * products), then Open Food Facts.
+ * products), then Open Food Facts (cached, see off-cache.ts).
  */
 export async function GET(_req: Request, ctx: RouteContext<"/api/food/barcode/[code]">) {
   const { code } = await ctx.params;
@@ -21,7 +21,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/food/barcode/[c
   if (own) return NextResponse.json({ food: own satisfies FoodCandidate });
 
   try {
-    const food = await fetchOffProduct(code, await getLocale());
+    const food = await lookupOffProduct(code, await getLocale());
     if (!food) return NextResponse.json({ food: null }, { status: 404 });
     return NextResponse.json({ food });
   } catch (e) {

@@ -95,25 +95,40 @@ function headers() {
   };
 }
 
+/** Network errors, timeouts and server errors are worth one more try; 404 and rate limits are not. */
+const RETRY_DELAY_MS = 600;
+
+/**
+ * GET with one retry: OFF often answers a single request slowly or with a 5xx
+ * and works again a moment later. Throws SourceUnavailableError when both fail.
+ */
+export async function offGet(url: string, timeoutMs: number, revalidate: number, fetchImpl: typeof fetch = fetch): Promise<Response> {
+  let last = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    try {
+      const res = await fetchImpl(url, { headers: headers(), signal: AbortSignal.timeout(timeoutMs), next: { revalidate } } as RequestInit);
+      if (res.ok || res.status === 404) return res;
+      last = `HTTP ${res.status}`;
+      if (res.status === 429 || res.status < 500) break;
+    } catch (e) {
+      last = (e as Error).message;
+    }
+  }
+  throw new SourceUnavailableError("openfoodfacts", last);
+}
+
+/** Live lookup (no cache). Use lookupOffProduct from off-cache.ts in the app. */
 export async function fetchOffProduct(barcode: string, locale: "de" | "en" = "de"): Promise<FoodCandidate | null> {
   if (!BARCODE_RE.test(barcode)) return null;
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}/api/v2/product/${barcode}.json?fields=${OFF_FIELDS}`, {
-      headers: headers(),
-      signal: AbortSignal.timeout(8000),
-      next: { revalidate: 86_400 },
-    });
-  } catch (e) {
-    throw new SourceUnavailableError("openfoodfacts", (e as Error).message);
-  }
+  const res = await offGet(`${BASE}/api/v2/product/${barcode}.json?fields=${OFF_FIELDS}`, 6000, 86_400);
   if (res.status === 404) return null;
-  if (!res.ok) throw new SourceUnavailableError("openfoodfacts", `HTTP ${res.status}`);
   const body = (await res.json()) as { status?: number; product?: OffProduct };
   if (body.status !== 1 || !body.product) return null;
   return mapOffProduct(body.product, barcode, locale);
 }
 
+/** Live search (no cache). Use searchOffCached from off-cache.ts in the app. */
 export async function searchOff(query: string, locale: "de" | "en" = "de", pageSize = 15): Promise<FoodCandidate[]> {
   const params = new URLSearchParams({
     search_terms: query,
@@ -125,16 +140,7 @@ export async function searchOff(query: string, locale: "de" | "en" = "de", pageS
     lc: locale,
     fields: OFF_FIELDS,
   });
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}/cgi/search.pl?${params}`, {
-      headers: headers(),
-      signal: AbortSignal.timeout(10000),
-      next: { revalidate: 3600 },
-    });
-  } catch (e) {
-    throw new SourceUnavailableError("openfoodfacts", (e as Error).message);
-  }
+  const res = await offGet(`${BASE}/cgi/search.pl?${params}`, 7000, 3600);
   if (!res.ok) throw new SourceUnavailableError("openfoodfacts", `HTTP ${res.status}`);
   const body = (await res.json()) as { products?: OffProduct[] };
   return (body.products ?? [])

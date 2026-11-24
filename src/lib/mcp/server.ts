@@ -27,7 +27,7 @@ import { withKcalEstimates } from "@/lib/cardio";
 import { PHOTO_BUCKET } from "@/lib/data";
 import { CARDIO_ACTIVITIES, SKIN_AREAS } from "@/lib/data/types";
 import { periodSummary } from "@/lib/summary";
-import { fetchOffProduct, searchOff } from "@/lib/food-sources/openfoodfacts";
+import { lookupOffProduct, searchOffCached } from "@/lib/food-sources/off-cache-store";
 import { searchUsda } from "@/lib/food-sources/usda";
 import { getBasicFood, isBasicSourceId, searchBasic } from "@/lib/food-sources/basic";
 import type { FoodCandidate } from "@/lib/food-sources/types";
@@ -105,9 +105,9 @@ async function resolveFood(ref: FoodRef, ctx: Ctx): Promise<FoodCandidate | stri
   if (ref.barcode) {
     const own = await getFoodByBarcode(ref.barcode, ctx);
     if (own) return own;
-    return (await fetchOffProduct(ref.barcode)) ?? `barcode ${ref.barcode} not found in Open Food Facts`;
+    return (await lookupOffProduct(ref.barcode)) ?? `barcode ${ref.barcode} not found in Open Food Facts`;
   }
-  if (ref.source === "openfoodfacts" && ref.source_id) return (await fetchOffProduct(ref.source_id)) ?? `Open Food Facts product ${ref.source_id} not found`;
+  if (ref.source === "openfoodfacts" && ref.source_id) return (await lookupOffProduct(ref.source_id)) ?? `Open Food Facts product ${ref.source_id} not found`;
   if (ref.source === "usda" && ref.source_id && isBasicSourceId(ref.source_id)) {
     return getBasicFood(ref.source_id) ?? `basic food ${ref.source_id} not found`;
   }
@@ -256,7 +256,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
       const want = (s: string) => !sources || sources.includes(s);
       const [mine, off, usda] = await Promise.allSettled([
         want("mine") ? searchMyFoods(query, 10, ctx) : Promise.resolve([]),
-        want("openfoodfacts") ? searchOff(query, "de", 8) : Promise.resolve([]),
+        want("openfoodfacts") ? searchOffCached(query, "de", 8) : Promise.resolve([]),
         want("usda") ? searchUsda(query, 6) : Promise.resolve([]),
       ]);
       const v = (r: PromiseSettledResult<FoodCandidate[]>) => (r.status === "fulfilled" ? r.value.map(compactFood) : `unavailable: ${(r.reason as Error)?.message}`);
@@ -267,7 +267,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
 
   tool("lookup_barcode", "Look up a product by EAN/UPC barcode (library first, then Open Food Facts).", z.object({ barcode: z.string().regex(BARCODE_RE) }), async ({ barcode }: { barcode: string }) => {
     const own = await getFoodByBarcode(barcode, ctx);
-    const f = own ?? (await fetchOffProduct(barcode));
+    const f = own ?? (await lookupOffProduct(barcode));
     return f ? json(compactFood(f)) : fail("not found");
   });
 

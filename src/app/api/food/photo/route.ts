@@ -4,7 +4,7 @@ import { getTimeZone } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
 import { searchMyFoods } from "@/lib/data";
 import { searchBasic } from "@/lib/food-sources/basic";
-import { searchOff } from "@/lib/food-sources/openfoodfacts";
+import { searchOffCached } from "@/lib/food-sources/off-cache-store";
 import { searchUsda } from "@/lib/food-sources/usda";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import { analyseMealPhoto, type AnalysedIngredient } from "@/lib/ai/meal-photo";
@@ -32,7 +32,7 @@ async function lookup(ing: AnalysedIngredient, ctx: { supabase: Awaited<ReturnTy
   const mine: FoodCandidate[] = await searchMyFoods(ing.search, 5, ctx).catch(() => []);
   const needOff = ing.branded || (basic.length === 0 && mine.length === 0);
   const needUsda = !ing.branded && basic.length === 0;
-  const [off, usda] = await Promise.allSettled([needOff ? searchOff(ing.search, "de", 5) : Promise.resolve([]), needUsda && ing.search_en ? searchUsda(ing.search_en, 4) : Promise.resolve([])]);
+  const [off, usda] = await Promise.allSettled([needOff ? searchOffCached(ing.search, "de", 5) : Promise.resolve([]), needUsda && ing.search_en ? searchUsda(ing.search_en, 4) : Promise.resolve([])]);
   return pickMatch(ing.branded, { mine, basic, openfoodfacts: settled(off), usda: settled(usda) });
 }
 

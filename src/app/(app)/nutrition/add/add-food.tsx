@@ -7,12 +7,13 @@ import type { MealSlot } from "@/lib/data/types";
 import { PLAN_AHEAD_DAYS, addDays } from "@/lib/dates";
 import { useMeals } from "@/components/meals-context";
 import { visibleMeals } from "@/lib/nutrition/meal-slots";
-import { Field, Input, Select, cx } from "@/components/ui";
+import { Card, Field, Input, Notice, Select, cx } from "@/components/ui";
 import { FoodSearch } from "./food-search";
 import { BarcodeTab } from "./barcode-tab";
 import { FoodForm } from "./food-form";
 import { FoodSheet } from "./food-sheet";
 import { RecipePicker } from "./recipe-picker";
+import { LabelPhoto, type LabelRead } from "./label-photo";
 import { logRecipe } from "../recipes/actions";
 
 export type Tab = "search" | "scan" | "recipes" | "manual";
@@ -28,7 +29,10 @@ export function AddFood({
   initialQuery,
   initialFood,
   initialAmount,
+  labelAi = false,
 }: {
+  /** In-app AI is set up: offer the nutrition-label photo as a fallback. */
+  labelAi?: boolean;
   initialQuery?: string;
   /** Opens the amount sheet for this food right away (e.g. from a nutrient hint). */
   initialFood?: FoodCandidate | null;
@@ -49,6 +53,7 @@ export function AddFood({
   const [date, setDate] = useState(initialDate);
   const [selected, setSelected] = useState<FoodCandidate | null>(initialFood ?? null);
   const [draft, setDraft] = useState<Partial<FoodCandidate> | null>(null);
+  const [fromLabel, setFromLabel] = useState<{ scaled: boolean } | null>(null);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "search", label: t.addFood.tabSearch },
@@ -58,11 +63,16 @@ export function AddFood({
   ];
 
   /** Opens the manual form prefilled (e.g. barcode not found, or incomplete data). */
-  const openManual = (prefill: Partial<FoodCandidate>) => {
+  const openManual = (prefill: Partial<FoodCandidate>, label: { scaled: boolean } | null = null) => {
     setSelected(null);
     setDraft(prefill);
+    setFromLabel(label);
     setTab("manual");
   };
+  /** Values read from a nutrition-label photo; keeps what is already known (e.g. the scanned barcode). */
+  const onLabel = (r: LabelRead, base: Partial<FoodCandidate> | null) =>
+    openManual({ ...base, ...r.food, name: r.food.name || base?.name || "", barcode: base?.barcode ?? r.food.barcode ?? null }, { scaled: r.scaledFromServing });
+  const hasValues = Boolean(draft?.nutrients && Object.keys(draft.nutrients).length);
 
   return (
     <div className="space-y-4">
@@ -98,8 +108,32 @@ export function AddFood({
 
       {tab === "search" && <FoodSearch recent={recent} favorites={favorites} onSelect={setSelected} initialQuery={initialQuery} />}
       {tab === "recipes" && <RecipePicker recipes={recipes} onSelect={setSelected} />}
-      {tab === "scan" && <BarcodeTab onFound={setSelected} onNotFound={(barcode) => openManual({ barcode })} />}
-      {tab === "manual" && <FoodForm key={JSON.stringify(draft)} initial={draft} onSubmit={setSelected} />}
+      {tab === "scan" && (
+        <BarcodeTab
+          onFound={setSelected}
+          onNotFound={(barcode) => openManual({ barcode })}
+          onLabel={labelAi ? (r, barcode) => onLabel(r, barcode ? { barcode } : null) : undefined}
+        />
+      )}
+      {tab === "manual" && (
+        <FoodForm
+          key={JSON.stringify(draft)}
+          initial={draft}
+          onSubmit={setSelected}
+          top={
+            fromLabel ? (
+              <Notice>
+                {t.labelPhoto.filled}
+                {fromLabel.scaled && <span className="mt-1 block">{t.labelPhoto.scaled}</span>}
+              </Notice>
+            ) : labelAi && !hasValues ? (
+              <Card>
+                <LabelPhoto showHint onRead={(r) => onLabel(r, draft)} />
+              </Card>
+            ) : null
+          }
+        />
+      )}
 
       {selected && (
         <FoodSheet

@@ -9,7 +9,7 @@ import "server-only";
 import type { Ctx } from "@/lib/data/core";
 import { checkBudget, costEur, readLimits, type AiLimits, type BudgetCheck, type TokenUsage } from "./cost";
 
-export type AiFeature = "meal_photo" | "cardio_display";
+export type AiFeature = "meal_photo" | "cardio_display" | "food_label";
 
 export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
 

@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql", "20261124000100_label_off_cache.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -65,6 +65,25 @@ describe("schema", () => {
       { email: "eva@example.de", source: null },
       { email: "max@example.de", source: "tiktok" },
     ]);
+  });
+
+  it("off_cache: app users can neither read nor write the shared Open Food Facts cache", async () => {
+    await db.exec(`insert into public.off_cache (key, kind, name, data) values ('p:de:4000000000000', 'product', 'Test', '{}')`);
+    await expect(as(A, () => db.exec(`select * from public.off_cache`))).rejects.toThrow(/permission denied/);
+    await expect(as(A, () => db.exec(`insert into public.off_cache (key, kind, data) values ('x', 'search', '[]')`))).rejects.toThrow(/permission denied/);
+    await db.exec("set role anon;");
+    try {
+      await expect(db.exec(`select * from public.off_cache`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.exec("reset role;");
+    }
+    await expect(db.exec(`insert into public.off_cache (key, kind, data) values ('y', 'other', '{}')`)).rejects.toThrow(/check constraint/);
+  });
+
+  it("ai_usage: food_label is an allowed feature", async () => {
+    await as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model, cost_eur) values ('${A}', 'food_label', 'claude-opus-5-5', 0.01)`));
+    await expect(as(A, () => db.exec(`insert into public.ai_usage (user_id, feature, model) values ('${A}', 'other', 'x')`))).rejects.toThrow(/check constraint/);
+    await db.exec(`delete from public.ai_usage where feature = 'food_label'`);
   });
 
   it("ai_usage: own rows can be read and added, never changed or deleted", async () => {
