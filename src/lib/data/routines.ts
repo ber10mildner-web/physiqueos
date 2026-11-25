@@ -1,6 +1,6 @@
 import "server-only";
 /**
- * Routines: cardio templates and supplements that log themselves on chosen weekdays.
+ * Routines: cardio templates, supplements and fixed meals that log themselves on chosen weekdays.
  *
  * There is no per-user background job. Instead, whenever the app or Claude reads
  * data, ensureRoutines() fills in what is due for the last few days. Each automatic
@@ -13,6 +13,7 @@ import { addDays } from "@/lib/dates";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { listCardioTemplates, logCardioTemplate } from "./training";
 import { listMedications, recordIntake } from "./wellbeing";
+import { applyMealTemplate, listMealTemplates } from "./meal-templates";
 
 /** How many days back missed automatic entries are filled in (today included). */
 export const ROUTINE_BACKFILL_DAYS = 7;
@@ -28,13 +29,14 @@ export function dueDates(autoDays: number[], autoFrom: string, today: string, ba
   return out;
 }
 
-type Run = { kind: "cardio" | "supplement"; ref_id: string; run_date: string };
+type Run = { kind: "cardio" | "supplement" | "meal"; ref_id: string; run_date: string };
 
 async function run(today: string, c: Ctx): Promise<number> {
-  const [templates, meds] = await Promise.all([listCardioTemplates(c), listMedications(c)]);
+  const [templates, meds, meals] = await Promise.all([listCardioTemplates(c), listMedications(c), listMealTemplates(c)]);
   const wanted: Run[] = [
     ...templates.flatMap((t) => dueDates(t.auto_days, t.auto_from, today).map((d) => ({ kind: "cardio" as const, ref_id: t.id, run_date: d }))),
     ...meds.flatMap((m) => dueDates(m.auto_days, m.auto_from, today).map((d) => ({ kind: "supplement" as const, ref_id: m.id, run_date: d }))),
+    ...meals.flatMap((m) => dueDates(m.auto_days, m.auto_from, today).map((d) => ({ kind: "meal" as const, ref_id: m.id, run_date: d }))),
   ];
   if (!wanted.length) return 0;
   // Claim the runs. Rows that already exist are skipped and not returned,
@@ -62,6 +64,9 @@ async function run(today: string, c: Ctx): Promise<number> {
         .eq("activity", t.activity)
         .neq("source", "manual");
       if (!count && (await logCardioTemplate(t, r.run_date, c)).ok) made++;
+    } else if (r.kind === "meal") {
+      const m = meals.find((x) => x.id === r.ref_id);
+      if (m && (await applyMealTemplate(m, r.run_date, c))) made++;
     } else {
       const m = meds.find((x) => x.id === r.ref_id);
       if (!m) continue;

@@ -106,7 +106,7 @@ export default async function DashboardPage() {
         </figure>
 
         <Card>
-          <DaySummary totals={totals} goal={goal} t={t} locale={locale} />
+          <DaySummary totals={totals} goal={goal} t={t} locale={locale} entries={todays.map(({ food_name, amount_g, nutrients_per_100g }) => ({ food_name, amount_g, nutrients_per_100g }))} />
           {!goal && (
             <Link href="/settings" className={cx(buttonClass("primary", "sm"), "mt-4 w-full")}>
               {t.dashboard.setGoal}
@@ -134,9 +134,11 @@ export default async function DashboardPage() {
           <EnergyBalance intake={totals.energy_kcal.value} burn={burn} isToday t={t} locale={locale} />
         </Card>
 
-        <Card>
-          <WaterCard date={today} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} compact />
-        </Card>
+        {profile?.water_tracking && (
+          <Card>
+            <WaterCard date={today} totalMl={water} targetMl={profile.water_target_ml ?? 2500} compact />
+          </Card>
+        )}
 
         <Link href="/week" className="block">
           <Card className="flex items-center gap-3 transition hover:bg-surface-2/60">

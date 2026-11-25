@@ -23,6 +23,8 @@ export interface Profile {
   height_cm: number | null;
   activity_level: ActivityLevel | null;
   water_target_ml: number | null;
+  /** Water card shown (off unless switched on in the settings). */
+  water_tracking: boolean;
   /** The user's meals in their order (null = default). */
   meal_slots: MealSetting[] | null;
 }

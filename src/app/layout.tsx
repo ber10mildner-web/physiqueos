@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const { locale } = await getI18n();
   return (
-    <html lang={locale} className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+    <html lang={locale} className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full bg-bg text-text">
         <I18nProvider locale={locale}>{children}</I18nProvider>
       </body>

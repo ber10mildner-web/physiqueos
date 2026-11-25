@@ -4,6 +4,7 @@ import { BookOpen, ChevronRight, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getDiary, getGoalOn, getLoggedDates, getProfile } from "@/lib/data";
 import { getQuickPicks, getWater } from "@/lib/data/tracking";
+import { listMealTemplates } from "@/lib/data/meal-templates";
 import { getToday } from "@/lib/auth";
 import { PLAN_AHEAD_DAYS, addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
@@ -25,15 +26,17 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const date = isIsoDate(sp.date) && sp.date <= lastDay ? sp.date : today;
   await ensureRoutines(today);
   const monday = startOfWeek(date);
-  const [entries, goal, water, profile, picks, logged] = await Promise.all([
+  const [entries, goal, water, profile, picks, logged, fixed] = await Promise.all([
     getDiary(date),
     getGoalOn(date),
     getWater(date),
     getProfile(),
     getQuickPicks(today),
     getLoggedDates(monday, addDays(monday, 6)),
+    listMealTemplates(),
   ]);
   const totals = sumItems(entries);
+  const sources = entries.map(({ food_name, amount_g, nutrients_per_100g }) => ({ food_name, amount_g, nutrients_per_100g }));
   const slots = mealSlotsOf(profile);
   const meals = visibleMeals(slots, new Set(entries.map((e) => e.meal)));
   const favoriteIds = new Set(picks.filter((p) => p.favorite && p.kind === "food").map((p) => p.id));
@@ -62,7 +65,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
 
       <div className="space-y-4">
         <Card>
-          <DaySummary totals={totals} goal={goal} t={t} locale={locale} />
+          <DaySummary totals={totals} goal={goal} t={t} locale={locale} entries={sources} />
         </Card>
 
         {entries.length === 0 && (
@@ -76,11 +79,14 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
           entries={entries}
           date={date}
           favoriteIds={[...favoriteIds]}
+          fixed={fixed.map(({ id, name, meal, auto_days }) => ({ id, name, meal, auto_days }))}
         />
 
-        <Card>
-          <WaterCard date={date} totalMl={water} targetMl={profile?.water_target_ml ?? 2500} />
-        </Card>
+        {profile?.water_tracking && (
+          <Card>
+            <WaterCard date={date} totalMl={water} targetMl={profile.water_target_ml ?? 2500} />
+          </Card>
+        )}
 
         <Link href="/nutrition/recipes" className="block">
           <Card className="flex items-center gap-3 transition hover:bg-surface-2">
@@ -94,7 +100,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
 
         {entries.length > 0 && (
           <Card>
-            <NutrientDetails totals={totals} t={t} locale={locale} />
+            <NutrientDetails totals={totals} entries={sources} sex={profile?.sex ?? null} />
           </Card>
         )}
       </div>

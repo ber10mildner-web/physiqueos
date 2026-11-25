@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql", "20261124000100_label_off_cache.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql", "20261124000100_label_off_cache.sql", "20261125000000_fixed_meals_water.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -316,5 +316,19 @@ describe("schema", () => {
       const seen = await as(B, () => db.query(`select * from public.${table}`));
       expect(seen.rows, table).toHaveLength(0);
     }
+  });
+
+  it("fixed meals: own rows only, routine runs accept 'meal', water tracking off by default", async () => {
+    const items = JSON.stringify([{ food_name: "Haferflocken", amount_g: 80, source: "usda", nutrients_per_100g: { energy_kcal: 372 } }]);
+    const m = await as(A, () =>
+      db.query<{ id: string }>(`insert into public.meal_templates (user_id, name, meal, items, auto_days) values ('${A}', 'Haferflocken', 'breakfast', '${items}', '{1,2,3}') returning id`),
+    );
+    await expect(as(A, () => db.exec(`insert into public.meal_templates (user_id, name, meal, items) values ('${A}', 'leer', 'dinner', '[]')`))).rejects.toThrow(/check constraint/);
+    await expect(as(B, () => db.exec(`insert into public.meal_templates (user_id, name, meal, items) values ('${A}', 'x', 'dinner', '${items}')`))).rejects.toThrow(/row-level security/);
+    expect((await as(B, () => db.query(`select * from public.meal_templates`))).rows).toHaveLength(0);
+    await as(A, () => db.exec(`insert into public.routine_runs (user_id, kind, ref_id, run_date) values ('${A}', 'meal', '${m.rows[0].id}', '2026-11-25')`));
+    await expect(as(A, () => db.exec(`insert into public.routine_runs (user_id, kind, ref_id, run_date) values ('${A}', 'other', '${m.rows[0].id}', '2026-11-25')`))).rejects.toThrow(/check constraint/);
+    const p = await as(A, () => db.query<{ water_tracking: boolean }>(`select water_tracking from public.profiles where id = '${A}'`));
+    expect(p.rows[0].water_tracking).toBe(false);
   });
 });

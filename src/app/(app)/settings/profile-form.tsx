@@ -9,6 +9,7 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [water, setWater] = useState(profile?.water_tracking ?? false);
 
   return (
     <form
@@ -48,9 +49,20 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
           ))}
         </Select>
       </Field>
-      <Field label={t.tracking.waterGoal}>
-        <Input name="water_target_ml" type="number" inputMode="numeric" step="100" min={500} max={8000} placeholder="2500" defaultValue={profile?.water_target_ml ?? ""} />
-      </Field>
+      <label className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2 px-3.5 py-3">
+        <span>
+          <span className="block text-sm font-medium">{t.tracking.waterTracking}</span>
+          <span className="block text-xs text-muted">{t.tracking.waterTrackingHint}</span>
+        </span>
+        <input type="checkbox" name="water_tracking" checked={water} onChange={(e) => setWater(e.target.checked)} className="size-5 shrink-0 accent-[var(--accent)]" />
+      </label>
+      {water ? (
+        <Field label={t.tracking.waterGoal}>
+          <Input name="water_target_ml" type="number" inputMode="numeric" step="100" min={500} max={8000} placeholder="2500" defaultValue={profile?.water_target_ml ?? ""} />
+        </Field>
+      ) : (
+        <input type="hidden" name="water_target_ml" value={profile?.water_target_ml ?? ""} />
+      )}
       {status === "error" && <Notice tone="error">{t.errors.invalidInput}</Notice>}
       <Button type="submit" variant="secondary" disabled={pending} className="w-full">
         {pending ? t.common.saving : status === "saved" ? `✓ ${t.common.saved}` : t.common.save}

@@ -80,7 +80,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
           <div className="space-y-3">
             <Bar label={t.nutrients.protein_g} value={w.avgProtein} goal={w.proteinGoal} unit="g" color="var(--protein)" locale={locale} />
             <Bar label={t.nutrients.fiber_g} value={w.avgFiber} goal={w.fiberGoal} unit="g" color="var(--fiber)" locale={locale} />
-            <Bar label={t.tracking.water} value={w.avgWater === null ? null : w.avgWater / 1000} goal={w.waterTarget / 1000} unit="l" color="var(--protein)" locale={locale} decimals={1} />
+            {w.waterTracking && <Bar label={t.tracking.water} value={w.avgWater === null ? null : w.avgWater / 1000} goal={w.waterTarget / 1000} unit="l" color="var(--protein)" locale={locale} decimals={1} />}
           </div>
           <p className="mt-2 text-[11px] text-faint">{t.week.avgHint}</p>
         </Card>
