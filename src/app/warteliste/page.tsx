@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Activity, Barcode, Camera, ChefHat, Leaf, Sparkles, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { WaitlistForm } from "./waitlist-form";
+import { LegalLinks } from "@/components/legal/legal-page";
 
 // Public page, no login. German only on purpose: it is the launch page for German social media.
 
@@ -128,6 +129,7 @@ export default async function WaitlistPage({ searchParams }: PageProps<"/warteli
           )}{" "}
           Nach dem Start löschen wir die Warteliste.
         </p>
+        <LegalLinks className="mt-4" />
       </section>
     </main>
   );
