@@ -15,6 +15,7 @@ import { loadCoach } from "@/lib/coach";
 import { LanguageSwitch } from "./language-switch";
 import { signOut } from "@/app/login/actions";
 import { fmt } from "@/lib/i18n";
+import { LegalLinks } from "@/components/legal/legal-page";
 
 export default async function SettingsPage() {
   const [{ t, locale }, profile, weight, today, ctx, timeZone] = await Promise.all([
@@ -98,6 +99,7 @@ export default async function SettingsPage() {
             </button>
           </form>
         </Card>
+        <LegalLinks className="justify-center pt-2" />
       </div>
     </Page>
   );
