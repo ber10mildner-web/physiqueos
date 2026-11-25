@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
+import { fmt } from "@/lib/i18n";
 import { NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from "@/lib/nutrition/nutrients";
 import { isComplete, type NutrientTotals } from "@/lib/nutrition/calc";
 import { REFERENCES } from "@/lib/nutrition/gaps";
@@ -64,6 +65,11 @@ export function NutrientDetails({ totals, entries, sex }: { totals: NutrientTota
                       )}
                     </span>
                     {ref && tot.known > 0 && <ProgressBar value={Math.min(tot.value, ref)} max={ref} color={tot.value >= ref ? "var(--accent)" : "var(--fiber)"} className="mt-1.5 !h-1" />}
+                    {tot.known > 0 && !isComplete(tot) && (
+                      <span className="mt-1 block text-[11px] text-warn/80">
+                        {fmt(t.nutrition.partial, { missing: tot.of - tot.known, of: tot.of })}
+                      </span>
+                    )}
                   </button>
                 </li>
               );

@@ -139,6 +139,7 @@ const en: Dictionary = {
     details: "All nutrients",
     detailsHint: "Target = adult daily reference (DGE). Tap a nutrient to see where it came from today.",
     incompleteHint: "* Not every food has a value for it, so the real amount is likely higher.",
+    partial: "No value for {missing} of {of} foods, real amount likely higher",
     coverage: "{known} of {of}",
     noData: "no data",
     minerals: "Minerals",

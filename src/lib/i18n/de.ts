@@ -142,6 +142,7 @@ const de = {
     details: "Alle Nährstoffe",
     detailsHint: "Ziel = Tagesbedarf eines Erwachsenen (DGE). Tipp auf einen Nährstoff: woher er heute kam.",
     incompleteHint: "* Nicht jedes Lebensmittel hat dafür einen Wert, der echte Wert ist eher höher.",
+    partial: "Ohne Wert: {missing} von {of} Lebensmitteln, echter Wert wahrscheinlich höher",
     coverage: "{known} von {of}",
     noData: "keine Daten",
     minerals: "Mineralstoffe",
