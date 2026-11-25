@@ -19,6 +19,7 @@ const profileSchema = z.object({
   height_cm: optionalNumber(100, 250),
   activity_level: z.enum(["sedentary", "light", "moderate", "active", "very_active"]).nullable().catch(null),
   water_target_ml: optionalNumber(500, 8000).transform((v) => (v === null ? null : Math.round(v))),
+  water_tracking: z.boolean(),
 });
 
 export async function saveProfile(formData: FormData): Promise<ActionResult> {
@@ -30,6 +31,7 @@ export async function saveProfile(formData: FormData): Promise<ActionResult> {
     height_cm: formData.get("height_cm"),
     activity_level: formData.get("activity_level") || null,
     water_target_ml: formData.get("water_target_ml"),
+    water_tracking: formData.get("water_tracking") === "on",
   });
   if (!parsed.success) return { ok: false, error: "invalid" };
   const { error } = await supabase.from("profiles").update(parsed.data).eq("id", userId);

@@ -94,6 +94,7 @@ export async function weekSummary(monday: string, today: string, ctx?: Ctx, lang
     fiberGoal,
     avgWater: avg(days.filter((d) => d.date <= last && d.water > 0).map((d) => d.water)),
     waterTarget: profile?.water_target_ml ?? 2500,
+    waterTracking: profile?.water_tracking ?? false,
     balance: withBurn.length ? withBurn.reduce((s, d) => s + d.kcal - d.burn!, 0) : null,
     balanceDays: withBurn.length,
     weight: { start: startAvg, end: endAvg, change: startAvg !== null && endAvg !== null ? endAvg - startAvg : null, weighIns },

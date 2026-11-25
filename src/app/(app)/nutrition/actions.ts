@@ -1,7 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { getToday, requireUser } from "@/lib/auth";
+import { deleteMealTemplate, saveMealTemplate } from "@/lib/data/meal-templates";
 import type { FoodCandidate } from "@/lib/food-sources/types";
 import { logFoodEntry } from "@/lib/data/mutations";
 import { addWater, copyEntries, setFoodFavorite } from "@/lib/data/tracking";
@@ -101,5 +102,19 @@ export async function quickLog(input: { kind: "food" | "recipe"; id: string; amo
     res = logged.ok ? { ok: true } : logged;
   }
   if (res.ok) revalidatePath("/", "layout");
+  return res;
+}
+
+/** Saves the meal as it is on `date` as a fixed meal for the chosen weekdays. */
+export async function saveFixedMeal(date: string, meal: string, days: number[]): Promise<ActionResult> {
+  const ctx = await requireUser();
+  const res = await saveMealTemplate({ date, meal, days, today: await getToday() }, ctx);
+  if (res.ok) revalidatePath("/nutrition", "layout");
+  return res;
+}
+
+export async function removeFixedMeal(id: string): Promise<ActionResult> {
+  const res = await deleteMealTemplate(id, await requireUser());
+  if (res.ok) revalidatePath("/nutrition", "layout");
   return res;
 }

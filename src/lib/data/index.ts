@@ -18,7 +18,7 @@ export async function getProfile(ctx?: Ctx): Promise<Profile | null> {
   const { supabase, userId } = await ctxOr(ctx);
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, locale, sex, birth_date, height_cm, activity_level, water_target_ml, meal_slots")
+    .select("id, display_name, locale, sex, birth_date, height_cm, activity_level, water_target_ml, water_tracking, meal_slots")
     .eq("id", userId)
     .maybeSingle();
   check(error, !ctx);

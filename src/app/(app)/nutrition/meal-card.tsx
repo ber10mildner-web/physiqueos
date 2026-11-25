@@ -11,6 +11,7 @@ import { Card } from "@/components/ui";
 import { EntryRow } from "./entry-row";
 import { CopyMealButton } from "./copy-meal-button";
 import { MealActions } from "./meal-actions";
+import { FixedMealButton, type FixedMealInfo } from "./fixed-meal-button";
 
 const MEAL_ICON = { breakfast: Coffee, pre_workout: Zap, lunch: Sun, post_workout: Dumbbell, dinner: Moon, snack: Cookie } as const;
 
@@ -22,6 +23,7 @@ export function MealCard({
   date,
   picks,
   favoriteIds,
+  fixed = [],
   t,
   locale,
 }: {
@@ -32,6 +34,7 @@ export function MealCard({
   date: string;
   picks: QuickPick[];
   favoriteIds: Set<string>;
+  fixed?: FixedMealInfo[];
   t: Dictionary;
   locale: string;
 }) {
@@ -53,6 +56,7 @@ export function MealCard({
               {formatNumber(totals.energy_kcal.value, locale)} kcal · {t.nutrientShort.protein_g} {formatNumber(p, locale)} · {t.nutrientShort.carbs_g} {formatNumber(totals.carbs_g.value, locale)} · {t.nutrientShort.fat_g} {formatNumber(totals.fat_g.value, locale)}
             </p>
           </div>
+          <FixedMealButton meal={meal} mealName={name} date={date} hasItems={items.length > 0} fixed={fixed} color={color} />
         </div>
         {items.length > 0 && (
           <ul className="divide-y divide-line">

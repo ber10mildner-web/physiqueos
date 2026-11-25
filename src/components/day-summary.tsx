@@ -3,17 +3,15 @@ import { fmt } from "@/lib/i18n";
 import type { NutrientTotals } from "@/lib/nutrition/calc";
 import type { NutritionGoal } from "@/lib/data/types";
 import { formatNumber } from "@/lib/format";
-import { ProgressBar, cx } from "./ui";
+import { cx } from "./ui";
+import { MacroGrid } from "./macro-grid";
+import type { SourceEntry } from "./nutrient-sources";
 
-const MACROS = [
-  { key: "protein_g", goal: "protein_g", color: "var(--protein)" },
-  { key: "carbs_g", goal: "carbs_g", color: "var(--carbs)" },
-  { key: "fat_g", goal: "fat_g", color: "var(--fat)" },
-  { key: "fiber_g", goal: "fiber_g", color: "var(--fiber)" },
-] as const;
-
-/** Calories ring + macro bars. Shows incomplete-data markers when some foods lack a value. */
-export function DaySummary({ totals, goal, t, locale }: { totals: NutrientTotals; goal: NutritionGoal | null; t: Dictionary; locale: string }) {
+/**
+ * Calories ring + macro bars. Shows incomplete-data markers when some foods lack a value.
+ * With `entries`, a tap on a macro lists the foods that brought the most of it.
+ */
+export function DaySummary({ totals, goal, t, locale, entries }: { totals: NutrientTotals; goal: NutritionGoal | null; t: Dictionary; locale: string; entries?: SourceEntry[] }) {
   const kcal = totals.energy_kcal.value;
   const target = goal?.energy_kcal ?? 0;
   const pct = target > 0 ? Math.min(1, kcal / target) : 0;
@@ -63,26 +61,7 @@ export function DaySummary({ totals, goal, t, locale }: { totals: NutrientTotals
           )}
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4">
-        {MACROS.map((m) => {
-          const tot = totals[m.key];
-          const g = goal?.[m.goal] ?? 0;
-          const incomplete = tot.of > 0 && tot.known < tot.of;
-          return (
-            <div key={m.key}>
-              <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
-                <span className="truncate text-muted">{t.nutrients[m.key]}</span>
-                <span className="num shrink-0 whitespace-nowrap">
-                  {formatNumber(tot.value, locale)}
-                  {incomplete && <span className="text-warn" title={fmt(t.nutrition.coverage, { known: tot.known, of: tot.of })}>*</span>}
-                  <span className="text-faint">{g > 0 ? `/${g}` : ""} g</span>
-                </span>
-              </div>
-              <ProgressBar value={tot.value} max={g} color={m.color} />
-            </div>
-          );
-        })}
-      </div>
+      <MacroGrid totals={totals} goal={goal} entries={entries} />
     </div>
   );
 }

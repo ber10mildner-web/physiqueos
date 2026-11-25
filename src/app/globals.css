@@ -46,6 +46,32 @@
   --animate-fade-up: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Splash with the motto when the app opens (src/components/splash.tsx) */
+.splash {
+  animation: splash-out 0.45s ease-in 1.3s both;
+}
+.splash-logo {
+  animation: splash-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.splash-text {
+  animation: splash-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+}
+.no-splash .splash {
+  display: none;
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes splash-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

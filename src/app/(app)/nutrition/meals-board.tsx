@@ -6,6 +6,7 @@ import type { QuickPick } from "@/lib/nutrition/quick-picks";
 import { MealCard } from "./meal-card";
 import { EntryDndProvider } from "./entry-dnd";
 import { placeEntry } from "./actions";
+import type { FixedMealInfo } from "./fixed-meal-button";
 
 type Move = { id: string; meal: MealSlot; orderedIds: string[] };
 
@@ -25,11 +26,13 @@ export function MealsBoard({
   entries,
   date,
   favoriteIds,
+  fixed = [],
 }: {
   meals: { meal: MealSlot; name: string; picks: QuickPick[] }[];
   entries: DiaryEntry[];
   date: string;
   favoriteIds: string[];
+  fixed?: FixedMealInfo[];
 }) {
   const { t, locale } = useI18n();
   const [shown, move] = useOptimistic(entries, applyMove);
@@ -51,6 +54,7 @@ export function MealsBoard({
           date={date}
           picks={picks}
           favoriteIds={favorites}
+          fixed={fixed.filter((f) => f.meal === meal)}
           t={t}
           locale={locale}
         />
