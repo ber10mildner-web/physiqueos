@@ -17,7 +17,7 @@ import { getDiary, getFood, getFoodByBarcode, getGoalOn, getPhotos, getProfile, 
 import { logFoodEntry, upsertWeight } from "@/lib/data/mutations";
 import { addWater, getWater } from "@/lib/data/tracking";
 import { getRecipe, listRecipes, logRecipeEntry, saveRecipe, saveRecipeIdea } from "@/lib/data/recipes";
-import { ensureRoutines } from "@/lib/data/routines";
+import { ensurePlannedMeals, ensureRoutines } from "@/lib/data/routines";
 import { listCardioTemplates } from "@/lib/data/training";
 import { workoutMinutes } from "@/lib/training/calc";
 import { addCardio, addSet, finishWorkout, getCardio, listCardio, listExercises, listPlans, listWorkouts, rateTraining, setCardioMachine, startWorkout } from "@/lib/data/training";
@@ -220,6 +220,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
 
   tool("get_day", "All diary entries of one day with totals (per nutrient incl. data coverage), goal and water.", z.object({ date: date.optional() }), async ({ date: d }: { date?: string }) => {
     const day = d ?? today();
+    await ensurePlannedMeals([day], today(), ctx); // a day ahead already holds its fixed meals, as in the app
     const [entries, goal, water] = await Promise.all([getDiary(day, ctx), getGoalOn(day, ctx), getWater(day, ctx)]);
     const totals = sumItems(entries);
     return json({

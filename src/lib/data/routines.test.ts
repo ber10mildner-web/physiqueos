@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dueDates, medicationDueDates } from "./routines";
+import { dueAmong, dueDates, medicationDueDates } from "./routines";
+import { plannedEntryIds } from "./meal-templates";
 import { supplementDiaryValues } from "./wellbeing";
 import { workoutMinutes } from "@/lib/training/calc";
 
@@ -34,5 +35,27 @@ describe("routines", () => {
     // set up today: no back-fill before that, even though the cycle started earlier
     const cyc = { auto_days: [1, 2, 3, 4, 5, 6, 7], every_days: null, cycle_on_days: 21, cycle_off_days: 7, schedule_start: "2026-11-01", auto_from: "2026-11-20" };
     expect(medicationDueDates(cyc, "2026-11-23")).toEqual(["2026-11-20", "2026-11-21"]);
+  });
+
+  it("finds the days ahead a fixed meal is due on", () => {
+    // 2026-11-27 is a Friday, 2026-11-28 a Saturday; set up on 2026-11-26
+    const ahead = ["2026-11-27", "2026-11-28", "2026-11-29"];
+    expect(dueAmong([1, 3, 5, 6, 7], "2026-11-26", ahead)).toEqual(ahead);
+    expect(dueAmong([2, 4], "2026-11-26", ahead)).toEqual([]);
+    expect(dueAmong([5], "2026-11-28", ahead)).toEqual([]);
+  });
+
+  it("only takes back planned entries the user left unchanged", () => {
+    const items = [
+      { food_name: "Zimt", amount_g: 2 },
+      { food_name: "Haferflocken", amount_g: 60 },
+    ];
+    const entries = [
+      { id: "a", food_name: "Zimt", amount_g: 2 },
+      { id: "b", food_name: "Haferflocken", amount_g: 80 }, // changed by hand
+      { id: "c", food_name: "Banane", amount_g: 120 }, // added by hand
+      { id: "d", food_name: "Zimt", amount_g: 2 }, // a second one is not from the fixed meal
+    ];
+    expect(plannedEntryIds(items, entries)).toEqual(["a"]);
   });
 });

@@ -10,6 +10,7 @@ import { ctxOr, type Ctx } from "./core";
 import { dateSchema, mealSchema, type Result } from "./mutations";
 import { sanitizeNutrients } from "@/lib/nutrition/nutrients";
 import { fixedMealName } from "@/lib/nutrition/fixed-meals";
+import { isoWeekday } from "@/lib/nutrition/goal-days";
 import type { MealSlot } from "./types";
 
 export interface MealTemplateItem {
@@ -90,6 +91,7 @@ export async function saveMealTemplate(input: { date: string; meal: string; days
   for (const t of existing) {
     const rest = t.auto_days.filter((d) => !days.includes(d));
     if (rest.length === t.auto_days.length) continue;
+    await removePlannedMeals(t, t.auto_days.filter((d) => days.includes(d)), today, { supabase, userId });
     const res = rest.length
       ? await supabase.from("meal_templates").update({ auto_days: rest }).eq("id", t.id).eq("user_id", userId)
       : await supabase.from("meal_templates").delete().eq("id", t.id).eq("user_id", userId);
@@ -107,9 +109,11 @@ export async function saveMealTemplate(input: { date: string; meal: string; days
   return e2 ? { ok: false, error: e2.message } : { ok: true };
 }
 
-export async function deleteMealTemplate(id: string, ctx?: Ctx): Promise<Result> {
-  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "invalid" };
+export async function deleteMealTemplate(id: string, today: string, ctx?: Ctx): Promise<Result> {
+  if (!z.string().uuid().safeParse(id).success || !dateSchema.safeParse(today).success) return { ok: false, error: "invalid" };
   const { supabase, userId } = await ctxOr(ctx);
+  const t = (await listMealTemplates({ supabase, userId })).find((x) => x.id === id);
+  if (t) await removePlannedMeals(t, t.auto_days, today, { supabase, userId });
   const { error } = await supabase.from("meal_templates").delete().eq("id", id).eq("user_id", userId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
@@ -142,4 +146,47 @@ export async function applyMealTemplate(t: MealTemplate, date: string, c: Ctx): 
   if (error) ({ error } = await c.supabase.from("diary_entries").insert(rows.map((r) => ({ ...r, food_id: null, recipe_id: null }))));
   if (error) console.error("fixed meal", error.message);
   return !error;
+}
+
+/** Diary entries on one day that came from these template items unchanged (same food, same amount). */
+export function plannedEntryIds(items: Pick<MealTemplateItem, "food_name" | "amount_g">[], entries: { id: string; food_name: string; amount_g: number }[]): string[] {
+  const left = items.map((i) => `${i.food_name}|${Number(i.amount_g)}`);
+  const ids: string[] = [];
+  for (const e of entries) {
+    const at = left.indexOf(`${e.food_name}|${Number(e.amount_g)}`);
+    if (at < 0) continue;
+    left.splice(at, 1);
+    ids.push(e.id);
+  }
+  return ids;
+}
+
+/**
+ * Takes a fixed meal back out of days still ahead (after `today`) on the given weekdays,
+ * when it is removed or those weekdays go to another fixed meal. Only entries the
+ * user left as they were are removed; anything changed or added by hand stays.
+ */
+async function removePlannedMeals(t: MealTemplate, weekdays: number[], today: string, c: Ctx): Promise<void> {
+  if (!weekdays.length) return;
+  const { data: runs, error } = await c.supabase
+    .from("routine_runs")
+    .select("run_date")
+    .eq("user_id", c.userId)
+    .eq("kind", "meal")
+    .eq("ref_id", t.id)
+    .gt("run_date", today);
+  if (error) return console.error("planned meals", error.message);
+  const dates = (runs ?? []).map((r) => r.run_date as string).filter((d) => weekdays.includes(isoWeekday(d)));
+  for (const date of dates) {
+    const { data: rows } = await c.supabase
+      .from("diary_entries")
+      .select("id, food_name, amount_g")
+      .eq("user_id", c.userId)
+      .eq("entry_date", date)
+      .eq("meal", t.meal)
+      .is("medication_log_id", null);
+    const ids = plannedEntryIds(t.items, (rows ?? []) as { id: string; food_name: string; amount_g: number }[]);
+    if (ids.length) await c.supabase.from("diary_entries").delete().eq("user_id", c.userId).in("id", ids);
+  }
+  if (dates.length) await c.supabase.from("routine_runs").delete().eq("user_id", c.userId).eq("kind", "meal").eq("ref_id", t.id).in("run_date", dates);
 }
