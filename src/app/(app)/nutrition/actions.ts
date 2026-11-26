@@ -121,7 +121,7 @@ export async function saveFixedMeal(date: string, meal: string, days: number[]):
 }
 
 export async function removeFixedMeal(id: string): Promise<ActionResult> {
-  const res = await deleteMealTemplate(id, await requireUser());
+  const res = await deleteMealTemplate(id, await getToday(), await requireUser());
   if (res.ok) revalidatePath("/nutrition", "layout");
   return res;
 }

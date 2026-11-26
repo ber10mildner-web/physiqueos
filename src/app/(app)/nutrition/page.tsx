@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ensureRoutines } from "@/lib/data/routines";
+import { ensurePlannedMeals, ensureRoutines } from "@/lib/data/routines";
 import { BookOpen, ChevronRight, ScanBarcode } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getDiary, getGoalOn, getLoggedDates, getProfile } from "@/lib/data";
@@ -24,8 +24,10 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   const sp = await searchParams;
   const lastDay = addDays(today, PLAN_AHEAD_DAYS);
   const date = isIsoDate(sp.date) && sp.date <= lastDay ? sp.date : today;
-  await ensureRoutines(today);
   const monday = startOfWeek(date);
+  await ensureRoutines(today);
+  // fixed meals also show on the days ahead in this week strip, so the rest of a day can be planned around them
+  await ensurePlannedMeals([...Array.from({ length: 7 }, (_, i) => addDays(monday, i)), date], today);
   const [entries, goal, water, profile, picks, logged, fixed] = await Promise.all([
     getDiary(date),
     getGoalOn(date),
