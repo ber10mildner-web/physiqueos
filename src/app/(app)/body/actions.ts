@@ -74,6 +74,10 @@ export async function saveMedicationAction(input: {
   nutrients: Record<string, number> | null;
   dose_g: number | null;
   auto_days: number[];
+  every_days?: number | null;
+  cycle_on_days?: number | null;
+  cycle_off_days?: number | null;
+  schedule_start?: string | null;
 }): Promise<ActionResult> {
   const res = await saveMedication({ ...(input as Parameters<typeof saveMedication>[0]), today: await getToday() }, await requireUser());
   // supplements with nutrients change the diary too

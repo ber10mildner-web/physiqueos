@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, ChevronRight, Sparkles, Watch } from "lucide-react";
+import { Camera, ChevronRight, LayoutGrid, Sparkles, Watch } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { getGoalOn, getLatestWeight, getProfile } from "@/lib/data";
 import { getTimeZone, getToday, requireUser } from "@/lib/auth";
@@ -57,6 +57,18 @@ export default async function SettingsPage() {
             <div className="flex-1">
               <div className="font-medium">{t.garmin.title}</div>
               <div className="text-sm text-muted">{t.health.title}</div>
+            </div>
+            <ChevronRight className="size-5 text-faint" />
+          </Card>
+        </Link>
+        <Link href="/settings/widget" className="block">
+          <Card className="flex items-center gap-3 transition hover:bg-surface-2">
+            <div className="grid size-11 place-items-center rounded-2xl bg-surface-3">
+              <LayoutGrid className="size-5 text-accent" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium">{t.widget.title}</div>
+              <div className="text-sm text-muted">{t.widget.link}</div>
             </div>
             <ChevronRight className="size-5 text-faint" />
           </Card>

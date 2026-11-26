@@ -3,10 +3,12 @@ import { useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDate } from "@/lib/dates";
+import { fmt } from "@/lib/i18n";
 import { MEDICATION_KINDS, SKIN_AREAS, type Medication, type MedicationLog, type SkinArea, type SkinLog } from "@/lib/data/types";
 import { Button, EmptyState, Field, Input, Notice, Select, cx } from "@/components/ui";
 import { archiveMedicationAction, saveMedicationAction, saveSkin, setMedicationTakenAction } from "./actions";
 import { WeekdayPicker, weekdayLabel } from "@/components/weekday-picker";
+import { cyclePhase, hasSchedule, isDue } from "@/lib/medication-schedule";
 import { MICRO_NUTRIENTS, NUTRIENTS, type NutrientKey } from "@/lib/nutrition/nutrients";
 
 const SKIN_COLORS = ["bg-fiber/15 text-fiber", "bg-fiber/10 text-fiber", "bg-warn/15 text-warn", "bg-carbs/15 text-carbs", "bg-danger/15 text-danger"];
@@ -110,7 +112,7 @@ export function MedicationChecklist({ today, medications, taken }: { today: stri
                   if (!res.ok) setDone(done);
                 });
               }}
-              className={cx("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left", on ? "bg-accent/10" : "bg-surface-2")}
+              className={cx("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left", on ? "bg-accent/10" : "bg-surface-2", !on && hasSchedule(m) && !isDue(m, today) && "opacity-60")}
             >
               <span className={cx("grid size-6 shrink-0 place-items-center rounded-full border", on ? "border-accent bg-accent text-accent-ink" : "border-line")}>
                 {on && <Check className="size-4" />}
@@ -119,7 +121,7 @@ export function MedicationChecklist({ today, medications, taken }: { today: stri
                 <span className="font-medium">{m.name}</span>
                 {m.dose && <span className="text-sm text-muted"> · {m.dose}</span>}
               </span>
-              <span className="text-xs text-faint">{t.wellbeing.kinds[m.kind]}</span>
+              <span className="text-xs text-faint">{scheduleNote(m, today, t) ?? t.wellbeing.kinds[m.kind]}</span>
             </button>
           </li>
         );
@@ -128,7 +130,7 @@ export function MedicationChecklist({ today, medications, taken }: { today: stri
   );
 }
 
-export function MedicationManager({ medications }: { medications: Medication[] }) {
+export function MedicationManager({ medications, today }: { medications: Medication[]; today: string }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
@@ -139,16 +141,16 @@ export function MedicationManager({ medications }: { medications: Medication[] }
           {medications.map((m) =>
             editing === m.id ? (
               <li key={m.id} className="py-2">
-                <MedicationEditor medication={m} onDone={() => setEditing(null)} />
+                <MedicationEditor medication={m} today={today} onDone={() => setEditing(null)} />
               </li>
             ) : (
               <li key={m.id} className="flex items-center gap-2 py-2">
                 <span className="min-w-0 flex-1 text-sm">
                   {m.name}
                   {m.dose && <span className="text-muted"> · {m.dose}</span>}
-                  {(m.nutrients || m.auto_days.length > 0) && (
+                  {(m.nutrients || hasSchedule(m)) && (
                     <span className="block text-xs text-faint">
-                      {[m.nutrients && t.wellbeing.countsInDiary, m.auto_days.length > 0 && `${t.wellbeing.auto}: ${weekdayLabel(m.auto_days, t)}`].filter(Boolean).join(" · ")}
+                      {[m.nutrients && t.wellbeing.countsInDiary, hasSchedule(m) && `${t.wellbeing.auto}: ${scheduleLabel(m, t)}`].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </span>
@@ -173,7 +175,7 @@ export function MedicationManager({ medications }: { medications: Medication[] }
           )}
         </ul>
       )}
-      {editing === null && <MedicationEditor key={medications.length} medication={null} onDone={() => undefined} />}
+      {editing === null && <MedicationEditor key={medications.length} medication={null} today={today} onDone={() => undefined} />}
     </div>
   );
 }
@@ -186,7 +188,7 @@ const parseNum = (s: string) => {
 };
 
 /** Add or edit a medication / supplement, optionally with nutrients per dose and automatic days. */
-function MedicationEditor({ medication, onDone }: { medication: Medication | null; onDone: () => void }) {
+function MedicationEditor({ medication, today, onDone }: { medication: Medication | null; today: string; onDone: () => void }) {
   const { t } = useI18n();
   const [name, setName] = useState(medication?.name ?? "");
   const [dose, setDose] = useState(medication?.dose ?? "");
@@ -196,6 +198,12 @@ function MedicationEditor({ medication, onDone }: { medication: Medication | nul
     Object.fromEntries(Object.entries(medication?.nutrients ?? {}).map(([k, v]) => [k, String(v)])),
   );
   const [days, setDays] = useState<number[]>(medication?.auto_days ?? []);
+  const [rhythm, setRhythm] = useState<"weekdays" | "interval">(medication?.every_days ? "interval" : "weekdays");
+  const [every, setEvery] = useState(String(medication?.every_days ?? 2));
+  const [cycle, setCycle] = useState(Boolean(medication?.cycle_on_days && medication?.cycle_off_days));
+  const [cycleOn, setCycleOn] = useState(String(medication?.cycle_on_days ? medication.cycle_on_days / 7 : 3));
+  const [cycleOff, setCycleOff] = useState(String(medication?.cycle_off_days ? medication.cycle_off_days / 7 : 1));
+  const [startDate, setStartDate] = useState(medication?.schedule_start ?? today);
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
   const hasMicros = MICRO_NUTRIENTS.some((k) => values[k]);
@@ -226,6 +234,11 @@ function MedicationEditor({ medication, onDone }: { medication: Medication | nul
       }
       const g = parseNum(doseG);
       if (g !== null && !(g > 0)) return setError(true);
+      const everyDays = rhythm === "interval" ? parseNum(every) : null;
+      if (everyDays !== null && !(Number.isInteger(everyDays) && everyDays >= 2 && everyDays <= 60)) return setError(true);
+      const on = cycle ? parseNum(cycleOn) : null;
+      const off = cycle ? parseNum(cycleOff) : null;
+      if (cycle && !(on && off && on > 0 && off > 0 && on <= 52 && off <= 52)) return setError(true);
       const res = await saveMedicationAction({
         id: medication?.id,
         name,
@@ -233,7 +246,11 @@ function MedicationEditor({ medication, onDone }: { medication: Medication | nul
         kind,
         nutrients: Object.keys(nutrients).length ? nutrients : null,
         dose_g: g,
-        auto_days: days,
+        auto_days: rhythm === "weekdays" ? days : [],
+        every_days: everyDays,
+        cycle_on_days: on ? Math.round(on * 7) : null,
+        cycle_off_days: off ? Math.round(off * 7) : null,
+        schedule_start: startDate || today,
       });
       if (!res.ok) return setError(true);
       if (!medication) {
@@ -242,6 +259,9 @@ function MedicationEditor({ medication, onDone }: { medication: Medication | nul
         setDoseG("");
         setValues({});
         setDays([]);
+        setRhythm("weekdays");
+        setCycle(false);
+        setStartDate(today);
       }
       onDone();
     });
@@ -281,10 +301,50 @@ function MedicationEditor({ medication, onDone }: { medication: Medication | nul
           </details>
         </details>
       )}
-      <div>
-        <div className="mb-1 text-[13px] text-muted">{t.wellbeing.daily}</div>
-        <WeekdayPicker value={days} onChange={setDays} />
-        <p className="mt-1 text-xs text-faint">{t.wellbeing.dailyHint}</p>
+      <div className="space-y-2">
+        <div className="text-[13px] text-muted">{t.wellbeing.daily}</div>
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1">
+          {(["weekdays", "interval"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={rhythm === r}
+              onClick={() => setRhythm(r)}
+              className={cx("h-8 rounded-lg text-xs font-medium", rhythm === r ? "bg-surface text-text" : "text-muted")}
+            >
+              {r === "weekdays" ? t.wellbeing.rhythmWeekdays : t.wellbeing.rhythmInterval}
+            </button>
+          ))}
+        </div>
+        {rhythm === "weekdays" ? (
+          <WeekdayPicker value={days} onChange={setDays} />
+        ) : (
+          <label className="flex items-center gap-2 text-sm">
+            {t.wellbeing.everyPrefix}
+            <Input value={every} onChange={(e) => setEvery(e.target.value)} type="number" inputMode="numeric" min={2} max={60} step={1} className="num w-20" />
+            {t.wellbeing.everySuffix}
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={cycle} onChange={(e) => setCycle(e.target.checked)} className="size-4 accent-[var(--accent)]" />
+          {t.wellbeing.cycle}
+        </label>
+        {cycle && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t.wellbeing.cycleOn}>
+              <Input value={cycleOn} onChange={(e) => setCycleOn(e.target.value)} type="number" inputMode="numeric" min={1} max={52} step={1} className="num" />
+            </Field>
+            <Field label={t.wellbeing.cycleOff}>
+              <Input value={cycleOff} onChange={(e) => setCycleOff(e.target.value)} type="number" inputMode="numeric" min={1} max={52} step={1} className="num" />
+            </Field>
+          </div>
+        )}
+        {(rhythm === "interval" || cycle) && (
+          <Field label={t.wellbeing.scheduleStart} hint={cycle ? t.wellbeing.scheduleStartCycleHint : t.wellbeing.scheduleStartHint}>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </Field>
+        )}
+        <p className="text-xs text-faint">{t.wellbeing.dailyHint}</p>
       </div>
       {error && <Notice tone="error">{t.errors.invalidInput}</Notice>}
       <div className={cx("grid gap-2", medication ? "grid-cols-2" : "grid-cols-1")}>
@@ -322,4 +382,24 @@ export function WellbeingHistory({ skin, logs, days }: { skin: SkinLog[]; logs: 
       ))}
     </ul>
   );
+}
+
+/** "alle 2 Tage", "Mo Mi Fr", plus "· 3 Wo. an / 1 Wo. Pause". */
+function scheduleLabel(m: Medication, t: ReturnType<typeof useI18n>["t"]): string {
+  const rhythm = m.every_days ? fmt(t.wellbeing.everyLabel, { n: m.every_days }) : weekdayLabel(m.auto_days, t);
+  if (!m.cycle_on_days || !m.cycle_off_days) return rhythm;
+  const weeks = m.cycle_on_days % 7 === 0 && m.cycle_off_days % 7 === 0;
+  const cycle = fmt(weeks ? t.wellbeing.cycleLabelWeeks : t.wellbeing.cycleLabelDays, {
+    on: weeks ? m.cycle_on_days / 7 : m.cycle_on_days,
+    off: weeks ? m.cycle_off_days / 7 : m.cycle_off_days,
+  });
+  return `${rhythm} · ${cycle}`;
+}
+
+/** Why an item is not due today ("Pause, noch 5 Tage" / "heute nicht dran"); null when due or unscheduled. */
+function scheduleNote(m: Medication, today: string, t: ReturnType<typeof useI18n>["t"]): string | null {
+  if (!hasSchedule(m) || isDue(m, today)) return null;
+  const phase = cyclePhase(m, today);
+  if (phase?.pause) return fmt(t.wellbeing.pauseLeft, { n: phase.daysLeft });
+  return t.wellbeing.notToday;
 }

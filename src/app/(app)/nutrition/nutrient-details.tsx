@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
-import { fmt } from "@/lib/i18n";
 import { NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from "@/lib/nutrition/nutrients";
 import { isComplete, type NutrientTotals } from "@/lib/nutrition/calc";
 import { REFERENCES } from "@/lib/nutrition/gaps";
@@ -12,7 +11,8 @@ import { NutrientSourcesSheet, type SourceEntry } from "@/components/nutrient-so
 
 /**
  * Every tracked nutrient with the amount reached today, against the daily
- * reference where there is one. A * marks sums where some foods had no value.
+ * reference where there is one. A * marks sums where some foods had no value; the note explaining it
+ * is shown once above the list instead of under every nutrient.
  * Tapping a nutrient shows which foods brought the most of it.
  */
 export function NutrientDetails({ totals, entries, sex }: { totals: NutrientTotals; entries: SourceEntry[]; sex: Sex | null }) {
@@ -30,6 +30,7 @@ export function NutrientDetails({ totals, entries, sex }: { totals: NutrientTota
         <span className="font-semibold">{t.nutrition.details}</span>
         <span className="text-muted transition group-open:rotate-180">⌄</span>
       </summary>
+      {anyIncomplete && <p className="mt-3 text-xs text-warn/80">{t.nutrition.incompleteHint}</p>}
       {groups.map((g) => (
         <div key={g.title} className="mt-4">
           <h3 className="mb-1 text-[13px] font-medium uppercase tracking-[0.08em] text-muted">{g.title}</h3>
@@ -65,11 +66,6 @@ export function NutrientDetails({ totals, entries, sex }: { totals: NutrientTota
                       )}
                     </span>
                     {ref && tot.known > 0 && <ProgressBar value={Math.min(tot.value, ref)} max={ref} color={tot.value >= ref ? "var(--accent)" : "var(--fiber)"} className="mt-1.5 !h-1" />}
-                    {tot.known > 0 && !isComplete(tot) && (
-                      <span className="mt-1 block text-[11px] text-warn/80">
-                        {fmt(t.nutrition.partial, { missing: tot.of - tot.known, of: tot.of })}
-                      </span>
-                    )}
                   </button>
                 </li>
               );
@@ -79,7 +75,6 @@ export function NutrientDetails({ totals, entries, sex }: { totals: NutrientTota
       ))}
       <p className="mt-3 text-xs text-faint">
         {t.nutrition.detailsHint}
-        {anyIncomplete && ` ${t.nutrition.incompleteHint}`}
       </p>
       {open && <NutrientSourcesSheet nutrient={open} entries={entries} color="var(--accent)" onClose={() => setOpen(null)} />}
     </details>

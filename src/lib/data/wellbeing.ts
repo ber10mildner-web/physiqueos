@@ -48,7 +48,7 @@ export async function deleteSkin(date: string, ctx?: Ctx): Promise<Result> {
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-const MED_COLUMNS = "id, name, dose, kind, position, nutrients, dose_g, auto_days, auto_from";
+const MED_COLUMNS = "id, name, dose, kind, position, nutrients, dose_g, auto_days, auto_from, every_days, cycle_on_days, cycle_off_days, schedule_start";
 
 function mapMedication(r: Record<string, unknown>): Medication {
   const n = r.nutrients ? sanitizeNutrients(r.nutrients) : null;
@@ -57,6 +57,10 @@ function mapMedication(r: Record<string, unknown>): Medication {
     nutrients: n && Object.keys(n).length ? n : null,
     dose_g: num(r.dose_g),
     auto_days: ((r.auto_days as number[] | null) ?? []).map(Number),
+    every_days: num(r.every_days),
+    cycle_on_days: num(r.cycle_on_days),
+    cycle_off_days: num(r.cycle_off_days),
+    schedule_start: (r.schedule_start as string | null) ?? (r.auto_from as string | null) ?? null,
   };
 }
 
@@ -83,6 +87,13 @@ const medicationSchema = z.object({
   nutrients: z.partialRecord(z.enum(NUTRIENT_KEYS), nutrientValue).nullish(),
   dose_g: z.number().positive().max(1000).nullish(),
   auto_days: z.array(z.number().int().min(1).max(7)).max(7).default([]),
+  /** Every N days instead of weekdays (2 = every second day). */
+  every_days: z.number().int().min(2).max(60).nullish(),
+  /** Cycle in days, e.g. 21 on / 7 off. Both or neither. */
+  cycle_on_days: z.number().int().min(1).max(365).nullish(),
+  cycle_off_days: z.number().int().min(1).max(365).nullish(),
+  /** First day of the rhythm / cycle. */
+  schedule_start: dateSchema.nullish(),
   /** Today in the user's time zone: automatic intake starts from here. */
   today: dateSchema.optional(),
 });
@@ -94,13 +105,19 @@ export async function saveMedication(input: z.input<typeof medicationSchema>, ct
   const { supabase, userId } = await ctxOr(ctx);
   const { id, today, ...d } = parsed.data;
   const nutrients = d.nutrients ? sanitizeNutrients(d.nutrients) : null;
+  const cycle = Boolean(d.cycle_on_days && d.cycle_off_days);
   const row = {
     name: d.name,
     dose: d.dose || null,
     kind: d.kind,
     nutrients: nutrients && Object.keys(nutrients).length ? nutrients : null,
     dose_g: d.dose_g ?? null,
-    auto_days: [...new Set(d.auto_days)].sort(),
+    auto_days: d.every_days ? [] : [...new Set(d.auto_days)].sort(),
+    every_days: d.every_days ?? null,
+    cycle_on_days: cycle ? d.cycle_on_days : null,
+    cycle_off_days: cycle ? d.cycle_off_days : null,
+    // only set when it matters, so editing the name never moves the rhythm
+    schedule_start: d.every_days || cycle ? (d.schedule_start ?? today ?? null) : null,
     ...(today ? { auto_from: today } : {}),
   };
   if (id) {

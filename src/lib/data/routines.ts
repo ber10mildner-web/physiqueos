@@ -1,6 +1,7 @@
 import "server-only";
 /**
- * Routines: cardio templates, supplements and fixed meals that log themselves on chosen weekdays.
+ * Routines: cardio templates, supplements and fixed meals that log themselves on chosen weekdays
+ * (supplements also every N days and in on/off cycles, see lib/medication-schedule).
  *
  * There is no per-user background job. Instead, whenever the app or Claude reads
  * data, ensureRoutines() fills in what is due for the last few days. Each automatic
@@ -11,6 +12,7 @@ import { cache } from "react";
 import { ctxOr, type Ctx } from "./core";
 import { addDays } from "@/lib/dates";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
+import { hasSchedule, isDue, type MedicationSchedule } from "@/lib/medication-schedule";
 import { listCardioTemplates, logCardioTemplate } from "./training";
 import { listMedications, recordIntake } from "./wellbeing";
 import { applyMealTemplate, listMealTemplates } from "./meal-templates";
@@ -29,13 +31,25 @@ export function dueDates(autoDays: number[], autoFrom: string, today: string, ba
   return out;
 }
 
+/** Like dueDates, for a medication / supplement with weekdays, an every-N-days rhythm and/or an on/off cycle. */
+export function medicationDueDates(m: MedicationSchedule & { auto_from: string }, today: string, backfill = ROUTINE_BACKFILL_DAYS): string[] {
+  if (!hasSchedule(m)) return [];
+  const out: string[] = [];
+  for (let i = backfill - 1; i >= 0; i--) {
+    const d = addDays(today, -i);
+    // auto_from = last save: never back-fill days before the user set this up or changed it
+    if (d >= m.auto_from && isDue(m, d)) out.push(d);
+  }
+  return out;
+}
+
 type Run = { kind: "cardio" | "supplement" | "meal"; ref_id: string; run_date: string };
 
 async function run(today: string, c: Ctx): Promise<number> {
   const [templates, meds, meals] = await Promise.all([listCardioTemplates(c), listMedications(c), listMealTemplates(c)]);
   const wanted: Run[] = [
     ...templates.flatMap((t) => dueDates(t.auto_days, t.auto_from, today).map((d) => ({ kind: "cardio" as const, ref_id: t.id, run_date: d }))),
-    ...meds.flatMap((m) => dueDates(m.auto_days, m.auto_from, today).map((d) => ({ kind: "supplement" as const, ref_id: m.id, run_date: d }))),
+    ...meds.flatMap((m) => medicationDueDates(m, today).map((d) => ({ kind: "supplement" as const, ref_id: m.id, run_date: d }))),
     ...meals.flatMap((m) => dueDates(m.auto_days, m.auto_from, today).map((d) => ({ kind: "meal" as const, ref_id: m.id, run_date: d }))),
   ];
   if (!wanted.length) return 0;

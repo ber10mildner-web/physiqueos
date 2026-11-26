@@ -40,12 +40,15 @@ import { RECIPE_TAGS, matchesFilters, recipeInsights } from "@/lib/recipes/insig
 import { getRecipeIdea, ideaIngredients, listRecipeIdeas } from "@/lib/recipes/catalog";
 import de from "@/lib/i18n/de";
 import { fmt } from "@/lib/i18n";
+import { energyMismatch } from "@/lib/nutrition/energy-check";
+import { hasSchedule, isDue } from "@/lib/medication-schedule";
 
 export const INSTRUCTIONS = `Sigma is the user's personal nutrition, body, training and wellbeing tracker (German/English).
 Conventions: dates are YYYY-MM-DD in the user's time zone (Europe/Berlin unless told otherwise). Food nutrients are per 100 g; amounts in grams.
 A nutrient missing from a food means "unknown", never zero. Totals report how many entries had data ("entries_with_data").
 
 NEVER invent nutritional values. Use values from search_foods / lookup_barcode results, from the user's own library, or values the user gave you (e.g. a photographed nutrition label). If a food cannot be found, ask the user for the label values.
+A food result with "warning" has calories that don't fit its macros (usually a typo in Open Food Facts): tell the user and prefer another match or the corrected value.
 
 Recipe photos: read the ingredient list and amounts, look up each ingredient with search_foods (prefer the user's library, then "basic" for whole/unprocessed foods like fruit, vegetables, rice or eggs, then Open Food Facts for branded products, then USDA for anything else), show the user your matches and amounts, and only then call create_recipe. Ask for the cooked weight of the finished dish if the user knows it.
 
@@ -84,7 +87,14 @@ function compactFood(f: FoodCandidate) {
     barcode: f.barcode,
     serving_size_g: f.serving_size_g,
     per_100g: Object.fromEntries(Object.entries(f.nutrients).map(([k, v]) => [k, Math.round((v as number) * 100) / 100])),
+    ...energyWarning(f),
   };
+}
+
+/** Calories that don't fit the macros (typo in the source): tell Claude so it asks the user. */
+function energyWarning(f: FoodCandidate): { warning?: string } {
+  const m = energyMismatch(f.nutrients);
+  return m ? { warning: `energy_kcal ${Math.round(m.stated)} does not match the macros (~${m.fromMacros} kcal per 100 g from protein/carbs/fat). Probably a database error: ask the user before logging, pick another match or log it with the corrected value via manual.` } : {};
 }
 
 const nutrientShape = Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, z.number().min(0).optional().describe(`${NUTRIENTS[k].unit} per 100 g`)])) as Record<
@@ -350,7 +360,14 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
       return json({
         daily: health,
         skin,
-        medication_list: meds.map((m) => ({ name: m.name, dose: m.dose, kind: m.kind })),
+        medication_list: meds.map((m) => ({
+          name: m.name,
+          dose: m.dose,
+          kind: m.kind,
+          ...(m.every_days ? { every_days: m.every_days } : m.auto_days.length ? { auto_weekdays_iso: m.auto_days } : {}),
+          ...(m.cycle_on_days && m.cycle_off_days ? { cycle_on_days: m.cycle_on_days, cycle_off_days: m.cycle_off_days, cycle_start: m.schedule_start } : {}),
+          ...(hasSchedule(m) ? { due_today: isDue(m, today()) } : {}),
+        })),
         medication_taken: medLogs.map((l) => ({ date: l.entry_date, name: l.name, dose: l.dose })),
       });
     },
@@ -383,7 +400,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
       const food = await resolveFood(a, ctx);
       if (typeof food === "string") return fail(food);
       const res = await logFoodEntry({ food, amount_g: a.amount_g, meal: a.meal, date: a.date ?? today() }, ctx);
-      return res.ok ? json({ ok: true, logged: `${a.amount_g} g ${food.name}`, kcal: food.nutrients.energy_kcal !== undefined ? Math.round((food.nutrients.energy_kcal * a.amount_g) / 100) : null }) : fail(res.error === "incomplete" ? "Food lacks energy/protein/carbs/fat values – ask the user for the label." : res.error);
+      return res.ok ? json({ ok: true, logged: `${a.amount_g} g ${food.name}`, kcal: food.nutrients.energy_kcal !== undefined ? Math.round((food.nutrients.energy_kcal * a.amount_g) / 100) : null, ...energyWarning(food) }) : fail(res.error === "incomplete" ? "Food lacks energy/protein/carbs/fat values – ask the user for the label." : res.error);
     },
     true,
   );

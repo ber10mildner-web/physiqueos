@@ -150,7 +150,7 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
             <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-line bg-surface-2 text-sm font-medium text-muted group-open:mb-3">
               {t.wellbeing.manage}
             </summary>
-            <MedicationManager medications={medications} />
+            <MedicationManager medications={medications} today={today} />
           </details>
           <p className="mt-3 text-xs text-faint">{t.wellbeing.privacy}</p>
         </Card>

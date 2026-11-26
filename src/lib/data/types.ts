@@ -264,6 +264,12 @@ export interface Medication {
   dose_g: number | null;
   auto_days: number[];
   auto_from: string;
+  /** Every N days from schedule_start instead of weekdays (null = weekdays). See lib/medication-schedule. */
+  every_days: number | null;
+  /** Cycle: N days on, then N days off, from schedule_start (null = no cycle). */
+  cycle_on_days: number | null;
+  cycle_off_days: number | null;
+  schedule_start: string | null;
 }
 
 export interface MedicationLog {
