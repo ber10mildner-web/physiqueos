@@ -2,6 +2,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashToken, isTokenFormat } from "@/lib/api-tokens";
+import { isValidTimeZone } from "@/lib/dates";
+
+const DEFAULT_TIME_ZONE = "Europe/Berlin";
 
 export type TokenScope = "mcp" | "widget";
 
@@ -32,7 +35,10 @@ export async function resolveToken(
     await admin.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
   }
 
-  const { data: profile } = await admin.from("profiles").select("id, time_zone").eq("id", row.user_id).maybeSingle();
+  const { data: profile } = await admin.from("profiles").select("id").eq("id", row.user_id).maybeSingle();
   if (!profile) return { ok: false, response: new Response("Unauthorized", { status: 401 }) };
-  return { ok: true, admin, userId: row.user_id, canWrite: row.can_write && scope === "mcp", timeZone: profile.time_zone || "Europe/Berlin" };
+  // profiles has no time zone column; the Garmin connection stores the user's zone
+  const { data: garmin } = await admin.from("garmin_connections").select("time_zone").eq("user_id", row.user_id).maybeSingle();
+  const timeZone = isValidTimeZone(garmin?.time_zone) ? garmin.time_zone : DEFAULT_TIME_ZONE;
+  return { ok: true, admin, userId: row.user_id, canWrite: row.can_write && scope === "mcp", timeZone };
 }
