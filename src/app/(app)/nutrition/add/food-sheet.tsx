@@ -11,7 +11,8 @@ import { hasRequiredNutrients, MICRO_NUTRIENTS, PRIMARY_NUTRIENTS } from "@/lib/
 import { scaleNutrients } from "@/lib/nutrition/calc";
 import { formatNumber, formatNutrient } from "@/lib/format";
 import { Button, Input, Notice, cx } from "@/components/ui";
-import { logFood, toggleFavorite } from "../actions";
+import { energyMismatch } from "@/lib/nutrition/energy-check";
+import { fixFoodEnergy, logFood, toggleFavorite } from "../actions";
 
 const COLORS: Record<string, string> = { protein_g: "var(--protein)", carbs_g: "var(--carbs)", fat_g: "var(--fat)", fiber_g: "var(--fiber)" };
 
@@ -28,7 +29,7 @@ export function FoodSheet({
 }: {
   food: FoodCandidate;
   /** Replaces the default "log to diary" action (used for recipe ingredients and recipes). */
-  onSubmit?: (grams: number) => Promise<{ ok: boolean; error?: string }>;
+  onSubmit?: (grams: number, food: FoodCandidate) => Promise<{ ok: boolean; error?: string }>;
   submitLabel?: string;
   initialAmount?: number;
   meal: MealSlot;
@@ -46,7 +47,11 @@ export function FoodSheet({
   const grams = Number(amount.replace(",", "."));
   const valid = Number.isFinite(grams) && grams > 0 && grams <= 5000;
   const complete = hasRequiredNutrients(food.nutrients);
-  const scaled = valid ? scaleNutrients(food.nutrients, grams) : {};
+  // Wrong calories in the source (e.g. Open Food Facts): warn, the user decides.
+  const mismatch = food.source === "recipe" ? null : energyMismatch(food.nutrients);
+  const [useMacroKcal, setUseMacroKcal] = useState(false);
+  const nutrients = mismatch && useMacroKcal ? { ...food.nutrients, energy_kcal: mismatch.fromMacros } : food.nutrients;
+  const scaled = valid ? scaleNutrients(nutrients, grams) : {};
   const micros = MICRO_NUTRIENTS.filter((k) => food.nutrients[k] !== undefined);
 
   useEffect(() => {
@@ -114,12 +119,33 @@ export function FoodSheet({
               if (!valid) return;
               setError(null);
               start(async () => {
-                const res = onSubmit ? await onSubmit(grams) : await logFood({ food, amount_g: grams, meal, date });
+                const fixed = mismatch && useMacroKcal;
+                // a library food keeps the corrected value for next time; a new one is stored with it
+                if (fixed && food.id) {
+                  const r = await fixFoodEnergy(food.id);
+                  if (!r.ok) return setError(t.common.error);
+                }
+                const used = fixed ? { ...food, nutrients } : food;
+                const res = onSubmit ? await onSubmit(grams, used) : await logFood({ food: used, amount_g: grams, meal, date });
                 if (res.ok) onLogged();
                 else setError(res.error === "incomplete" ? t.addFood.incomplete : t.common.error);
               });
             }}
           >
+            {mismatch && (
+              <div className="mb-4 space-y-2">
+                <Notice tone="warn">
+                  {useMacroKcal ? t.addFood.usingMacroKcal : fmt(t.addFood.energyMismatch, { stated: formatNumber(mismatch.stated, locale, 0), calc: formatNumber(mismatch.fromMacros, locale, 0) })}
+                </Notice>
+                <button
+                  type="button"
+                  onClick={() => setUseMacroKcal(!useMacroKcal)}
+                  className="h-9 w-full rounded-xl border border-warn/40 text-sm font-medium text-warn"
+                >
+                  {useMacroKcal ? t.addFood.undo : fmt(t.addFood.useMacroKcal, { calc: formatNumber(mismatch.fromMacros, locale, 0) })}
+                </button>
+              </div>
+            )}
             <label className="block">
               <span className="mb-1.5 block text-[13px] text-muted">{t.addFood.amount}</span>
               <div className="relative">

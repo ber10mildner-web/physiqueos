@@ -131,3 +131,11 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [x] Rezeptbereich mit Filtern (Viel Protein, Ballaststoffe, unter 500 kcal, gut für die Haut, Eisen gut verwertbar, Omega-3, Calcium, Vitamin D, vegetarisch/vegan, „Passt zu deinen Lücken“) mit kurzer Erklärung und „Gut zu wissen“ zur Aufnahme (Bioverfügbarkeit nur als grobe Faustregel); 19 Rezeptideen mit USDA-Werten zum Übernehmen
 - [ ] Mehr Rezeptideen (z. B. Leos Lieblingsgerichte, Thermomix-Klassiker) und weitere Filter (z. B. „gut für den Schlaf“, „vor dem Training“)
 - [ ] Andere Wearables neben Garmin (Polar, Fitbit, Whoop, Apple Watch …): am besten über Apple Health bzw. Health Connect (Android). Braucht eine native App-Hülle, eine reine Web-App kommt da nicht ran. Strava ginge schon jetzt direkt. Angehen, wenn Sigma in den App Store soll.
+
+## Datenqualität, Widget, Einnahme-Rhythmus (2026-11-26)
+
+- [x] Kalorien-Plausibilitätscheck: passen kcal nicht zu Eiweiß/KH/Fett (z. B. REWE Bio Zwiebel rot mit 326 statt ~27 kcal in Open Food Facts), warnt Sigma beim Eintragen und bietet den berechneten Wert an; Claude bekommt die Warnung auch
+- [x] Widget mit übrigen kcal und Makros für Home- und Sperrbildschirm (iPhone über die kostenlose App Scriptable), App-Schnellzugriffe am Icon (Android)
+- [ ] Echtes Widget ohne Umweg: braucht eine native App-Hülle (z. B. Capacitor), zusammen mit Apple Health / Health Connect angehen
+- [x] Supplements und Medikamente: alle X Tage und Zyklen (z. B. 3 Wochen nehmen, 1 Woche Pause), zusätzlich zu festen Wochentagen
+- [x] Vitamine: Hinweis „echter Wert eher höher“ nur noch einmal oben statt unter jedem Nährstoff

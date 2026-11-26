@@ -402,8 +402,8 @@ export function RecipeEditor({ recipe, recent, favorites, today }: { recipe: Rec
             setPicker({ ...(picker ?? {}), tab: "manual", draft: f });
           }}
           onLogged={() => undefined}
-          onSubmit={async (g) => {
-            addItem(selected, g);
+          onSubmit={async (g, used) => {
+            addItem(used, g);
             return { ok: true };
           }}
         />

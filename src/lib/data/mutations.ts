@@ -5,6 +5,7 @@ import { ctxOr, type Ctx } from "./core";
 import { isIsoDate } from "@/lib/dates";
 import { hasRequiredNutrients, sanitizeNutrients } from "@/lib/nutrition/nutrients";
 import type { FoodCandidate } from "@/lib/food-sources/types";
+import { energyMismatch } from "@/lib/nutrition/energy-check";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -58,6 +59,27 @@ export async function upsertFood(food: z.infer<typeof candidateSchema>, ctx?: Ct
   const { data, error } = await q;
   if (error) return { ok: false, error: error.message };
   return { ok: true, foodId: data.id };
+}
+
+/**
+ * Replaces the calories of a library food with the value calculated from its
+ * macros (see energyMismatch), after the user confirmed it. Earlier diary
+ * entries keep their snapshot; the caller logs the new entry with the new value.
+ */
+export async function correctFoodEnergy(foodId: string, ctx?: Ctx): Promise<Result<{ energy_kcal: number }>> {
+  if (!z.string().uuid().safeParse(foodId).success) return { ok: false, error: "invalid" };
+  const { supabase, userId } = await ctxOr(ctx);
+  const { data, error } = await supabase.from("foods").select("nutrients").eq("id", foodId).eq("user_id", userId).maybeSingle();
+  if (error || !data) return { ok: false, error: error?.message ?? "not_found" };
+  const nutrients = sanitizeNutrients(data.nutrients);
+  const mismatch = energyMismatch(nutrients);
+  if (!mismatch) return { ok: false, error: "no_mismatch" };
+  const { error: ue } = await supabase
+    .from("foods")
+    .update({ nutrients: { ...nutrients, energy_kcal: mismatch.fromMacros }, updated_at: new Date().toISOString() })
+    .eq("id", foodId)
+    .eq("user_id", userId);
+  return ue ? { ok: false, error: ue.message } : { ok: true, energy_kcal: mismatch.fromMacros };
 }
 
 const logSchema = z.object({ food: candidateSchema, amount_g: z.number().positive().max(5000), meal: mealSchema, date: dateSchema });

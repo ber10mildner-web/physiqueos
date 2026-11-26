@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getToday, requireUser } from "@/lib/auth";
 import { deleteMealTemplate, saveMealTemplate } from "@/lib/data/meal-templates";
 import type { FoodCandidate } from "@/lib/food-sources/types";
-import { logFoodEntry } from "@/lib/data/mutations";
+import { correctFoodEnergy, logFoodEntry } from "@/lib/data/mutations";
 import { addWater, copyEntries, setFoodFavorite } from "@/lib/data/tracking";
 import { getFood } from "@/lib/data";
 import { logRecipeEntry } from "@/lib/data/recipes";
@@ -21,6 +21,13 @@ export async function logFood(input: { food: FoodCandidate; amount_g: number; me
   const res = await logFoodEntry(input, await requireUser());
   if (res.ok) revalidatePath("/", "layout");
   return res;
+}
+
+/** Stores the calories calculated from the macros for a library food (wrong value in the source). */
+export async function fixFoodEnergy(foodId: string): Promise<ActionResult> {
+  const res = await correctFoodEnergy(foodId, await requireUser());
+  if (res.ok) revalidatePath("/nutrition", "layout");
+  return res.ok ? { ok: true } : res;
 }
 
 export async function copyMeal(fromDate: string, toDate: string, meal: string | null): Promise<ActionResult & { copied?: number }> {

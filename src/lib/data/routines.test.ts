@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueDates } from "./routines";
+import { dueDates, medicationDueDates } from "./routines";
 import { supplementDiaryValues } from "./wellbeing";
 import { workoutMinutes } from "@/lib/training/calc";
 
@@ -26,5 +26,13 @@ describe("routines", () => {
     expect(workoutMinutes("2026-11-21T09:00:00Z", "2026-11-21T10:15:00Z")).toBe(75);
     expect(workoutMinutes("2026-11-21T09:00:00Z", null)).toBeNull();
     expect(workoutMinutes("2026-11-21T10:00:00Z", "2026-11-21T09:00:00Z")).toBeNull();
+  });
+
+  it("supplements every second day and in a 3-on/1-off cycle", () => {
+    const med = { auto_days: [], every_days: 2, cycle_on_days: null, cycle_off_days: null, schedule_start: "2026-11-01", auto_from: "2026-11-01" };
+    expect(medicationDueDates(med, "2026-11-21")).toEqual(["2026-11-15", "2026-11-17", "2026-11-19", "2026-11-21"]);
+    // set up today: no back-fill before that, even though the cycle started earlier
+    const cyc = { auto_days: [1, 2, 3, 4, 5, 6, 7], every_days: null, cycle_on_days: 21, cycle_off_days: 7, schedule_start: "2026-11-01", auto_from: "2026-11-20" };
+    expect(medicationDueDates(cyc, "2026-11-23")).toEqual(["2026-11-20", "2026-11-21"]);
   });
 });
