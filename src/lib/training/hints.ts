@@ -1,7 +1,7 @@
 import "server-only";
 import { getExerciseSets } from "@/lib/data/training";
 import type { Ctx } from "@/lib/data/core";
-import { records, type Records } from "./calc";
+import { records, strengthHistory, type Records, type StrengthHistory } from "./calc";
 
 type HintSet = { reps: number; weight_kg: number; is_warmup: boolean };
 
@@ -12,6 +12,8 @@ export interface ExerciseHint {
   /** The last few sessions (newest first), for progression and stall detection. */
   sessions: HintSet[][];
   records: Records;
+  /** Best set per earlier session (oldest first, last 12), for the strength chart. */
+  history: StrengthHistory;
 }
 
 /** "Last time" sets and all-time records of an exercise, ignoring the given (current) workout. */
@@ -24,5 +26,9 @@ export async function exerciseHint(exerciseId: string, excludeWorkoutId?: string
       .sort((a, b) => a.position - b.position)
       .map((s) => ({ reps: s.reps, weight_kg: s.weight_kg, is_warmup: s.is_warmup })),
   );
-  return { exerciseId, lastDate: all[0]?.workout_date ?? null, lastSets: sessions[0] ?? [], sessions, records: records(all) };
+  return { exerciseId, lastDate: all[0]?.workout_date ?? null, lastSets: sessions[0] ?? [], sessions, records: records(all), history: last12(strengthHistory(all)) };
+}
+
+function last12(h: StrengthHistory): StrengthHistory {
+  return { ...h, points: h.points.slice(-12) };
 }

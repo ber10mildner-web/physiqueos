@@ -6,13 +6,14 @@ import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
 import type { Exercise, ExerciseNote, Workout, WorkoutSet } from "@/lib/data/types";
-import { coachNext, estimate1RM, volume } from "@/lib/training/calc";
+import { coachNext, estimate1RM, strengthHistory, volume } from "@/lib/training/calc";
 import type { ExerciseHint } from "@/lib/training/hints";
 import { Button, Card, Notice, cx } from "@/components/ui";
 import { ExercisePicker, exerciseName } from "../../exercise-picker";
 import { addSetAction, deleteSetAction, deleteWorkoutAction, finishWorkoutAction, hintAction, rateTrainingAction } from "../../actions";
 import { RatingFields, RatingSummary, emptyRating, isRated } from "@/components/rating-form";
 import type { TrainingRating } from "@/lib/data/types";
+import { StrengthChart } from "@/components/strength-chart";
 import { ExerciseFeeling } from "./exercise-feeling";
 import { WorkoutTimes } from "./workout-times";
 
@@ -65,6 +66,7 @@ export function WorkoutLogger({
           <ExerciseBlock
             key={exId}
             workoutId={workout.id}
+            workoutDate={workout.workout_date}
             exercise={ex}
             sets={workout.sets.filter((s) => s.exercise_id === exId)}
             target={targets[exId]}
@@ -110,6 +112,7 @@ export function WorkoutLogger({
 
 export function ExerciseBlock({
   workoutId,
+  workoutDate,
   exercise,
   sets,
   target,
@@ -117,6 +120,7 @@ export function ExerciseBlock({
   note,
 }: {
   workoutId: string;
+  workoutDate: string;
   exercise: Exercise;
   sets: WorkoutSet[];
   target?: Target;
@@ -152,6 +156,11 @@ export function ExerciseBlock({
   };
 
   const done = sets.filter((s) => !s.is_warmup).length;
+  // Today's best set so far, appended to the chart while logging.
+  const todayPoint = (metric: "e1rm" | "reps") => {
+    const h = strengthHistory(sets.map((s) => ({ ...s, workout_id: workoutId, workout_date: workoutDate })));
+    return h.metric === metric ? (h.points[0] ?? null) : null;
+  };
   const kgText = (v: number) => formatNumber(v, locale, 1);
   const suggestionText = !suggestion
     ? null
@@ -182,8 +191,9 @@ export function ExerciseBlock({
         </Link>
       </div>
 
+      {hint?.history && <StrengthChart compact history={hint.history} today={todayPoint(hint.history.metric)} />}
       {hint && hint.lastSets.length > 0 && (
-        <p className="num text-xs text-muted">
+        <p className="num mt-1 text-xs text-muted">
           {fmt(t.training.lastTime, {
             sets: hint.lastSets
               .filter((s) => !s.is_warmup)
