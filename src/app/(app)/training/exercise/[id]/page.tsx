@@ -3,7 +3,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/dates";
 import { formatNumber } from "@/lib/format";
 import { getExerciseSets, listExercises } from "@/lib/data/training";
-import { estimate1RM, records } from "@/lib/training/calc";
+import { estimate1RM, records, strengthHistory } from "@/lib/training/calc";
+import { StrengthChart } from "@/components/strength-chart";
 import { Card, EmptyState, Page, PageHeader, SectionTitle } from "@/components/ui";
 
 export default async function ExercisePage({ params }: PageProps<"/training/exercise/[id]">) {
@@ -26,6 +27,7 @@ export default async function ExercisePage({ params }: PageProps<"/training/exer
     }
   }
   const rows = [...sessions.values()];
+  const history = strengthHistory(sets);
   const name = locale === "de" ? exercise.name_de : exercise.name_en;
 
   return (
@@ -56,17 +58,20 @@ export default async function ExercisePage({ params }: PageProps<"/training/exer
           {rows.length === 0 ? (
             <EmptyState>{t.training.noHistory}</EmptyState>
           ) : (
-            <ul className="divide-y divide-line">
-              {rows.map((r, i) => (
-                <li key={i} className="num flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <span className="text-muted">{formatDate(r.date, locale)}</span>
-                  <span>
-                    {formatNumber(r.best.weight_kg, locale, 1)} kg × {r.best.reps}
-                  </span>
-                  <span className="w-24 text-right text-muted">{r.best.e1rm ? `≈ ${formatNumber(r.best.e1rm, locale, 1)}` : "–"}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <StrengthChart history={history} />
+              <ul className={history.points.length >= 2 ? "mt-3 divide-y divide-line" : "divide-y divide-line"}>
+                {rows.map((r, i) => (
+                  <li key={i} className="num flex items-center justify-between gap-3 py-2.5 text-sm">
+                    <span className="text-muted">{formatDate(r.date, locale)}</span>
+                    <span>
+                      {formatNumber(r.best.weight_kg, locale, 1)} kg × {r.best.reps}
+                    </span>
+                    <span className="w-24 text-right text-muted">{r.best.e1rm ? `≈ ${formatNumber(r.best.e1rm, locale, 1)}` : "–"}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </Card>
       </div>

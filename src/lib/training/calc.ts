@@ -107,3 +107,45 @@ export function coachNext(sessions: SetLike[][], repMin: number, repMax: number,
   }
   return { kind: "reps", weight_kg: last.weight, reps: Math.min(repMax, lowest + 1) };
 }
+
+export interface StrengthPoint {
+  date: string;
+  /** Estimated max (kg) for loaded exercises, max reps for bodyweight. */
+  value: number;
+  /** The set that produced the value. */
+  weight_kg: number;
+  reps: number;
+}
+
+export interface StrengthHistory {
+  metric: "e1rm" | "reps";
+  /** One point per session, oldest first. */
+  points: StrengthPoint[];
+}
+
+/**
+ * Trend estimate for charts: Epley like estimate1RM, but also for sets above 12 reps
+ * (less exact there, yet still fine to show whether a high-rep exercise gets stronger).
+ */
+function trendMax(weightKg: number, reps: number): number {
+  return reps === 1 ? weightKg : weightKg * (1 + reps / 30);
+}
+
+/**
+ * One point per session for the strength chart: the best working set by estimated max.
+ * If the exercise was never done with added weight, the metric is the most reps in one set.
+ * @param sets sets of one exercise in any order, each tagged with its workout and date.
+ */
+export function strengthHistory(sets: (SetLike & { workout_id: string; workout_date: string })[]): StrengthHistory {
+  const working = sets.filter((s) => !s.is_warmup && s.reps > 0);
+  const metric = working.some((s) => s.weight_kg > 0) ? "e1rm" : "reps";
+  const byWorkout = new Map<string, StrengthPoint>();
+  for (const s of working) {
+    if (metric === "e1rm" && s.weight_kg <= 0) continue;
+    const value = metric === "e1rm" ? trendMax(s.weight_kg, s.reps) : s.reps;
+    const cur = byWorkout.get(s.workout_id);
+    if (!cur || value > cur.value) byWorkout.set(s.workout_id, { date: s.workout_date, value: Math.round(value * 10) / 10, weight_kg: s.weight_kg, reps: s.reps });
+  }
+  const points = [...byWorkout.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return { metric, points };
+}

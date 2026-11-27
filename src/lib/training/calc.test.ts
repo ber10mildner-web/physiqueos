@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coachNext, estimate1RM, records, volume } from "./calc";
+import { coachNext, estimate1RM, records, strengthHistory, volume } from "./calc";
 
 describe("training calc", () => {
   it("estimates 1RM with Epley", () => {
@@ -62,5 +62,32 @@ describe("coachNext", () => {
   });
   it("bodyweight: one more rep", () => {
     expect(coachNext([s(0, 15, 12)], 8, 12, "bodyweight")).toEqual({ kind: "reps", weight_kg: 0, reps: 16 });
+  });
+});
+
+describe("strengthHistory", () => {
+  const set = (workout_id: string, workout_date: string, weight_kg: number, reps: number, is_warmup = false) => ({ workout_id, workout_date, weight_kg, reps, is_warmup });
+
+  it("takes the best working set per session, oldest first", () => {
+    const h = strengthHistory([set("b", "2026-11-20", 60, 10, true), set("b", "2026-11-20", 100, 5), set("b", "2026-11-20", 90, 8), set("a", "2026-11-13", 95, 5)]);
+    expect(h.metric).toBe("e1rm");
+    expect(h.points.map((p) => p.date)).toEqual(["2026-11-13", "2026-11-20"]);
+    // 100 × 5 ≈ 116.7 beats 90 × 8 = 114
+    expect(h.points[1]).toEqual({ date: "2026-11-20", value: 116.7, weight_kg: 100, reps: 5 });
+  });
+
+  it("still charts high-rep sets", () => {
+    const h = strengthHistory([set("a", "2026-11-01", 20, 15), set("b", "2026-11-08", 20, 18)]);
+    expect(h.points.map((p) => p.value)).toEqual([30, 32]);
+  });
+
+  it("uses reps for bodyweight exercises", () => {
+    const h = strengthHistory([set("a", "2026-11-01", 0, 8), set("a", "2026-11-01", 0, 10), set("b", "2026-11-08", 0, 12)]);
+    expect(h.metric).toBe("reps");
+    expect(h.points.map((p) => p.value)).toEqual([10, 12]);
+  });
+
+  it("is empty without working sets", () => {
+    expect(strengthHistory([set("a", "2026-11-01", 50, 10, true)]).points).toEqual([]);
   });
 });
