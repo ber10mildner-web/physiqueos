@@ -1035,6 +1035,14 @@ const en: Dictionary = {
     set: "Set goal weight",
     edit: "Change goal",
   },
+  fastLoss: {
+    title: "You are losing too fast",
+    high: "Your weight is falling by {rate} kg per week, that is {pct} % of your body weight. From about 1 % per week the risk of losing muscle rises.",
+    faster: "Your weight is falling by {rate} kg per week, the plan is {planned} kg. A bigger deficit than planned costs muscle more easily.",
+    advice: "Eat about {kcal} kcal more per day, keep protein high and keep training heavy.",
+    adviceNoKcal: "Keep protein high and keep training heavy.",
+    basis: "From your weight trend over the last 4 weeks. The last 2 weeks were too fast as well.",
+  },
   forecast: {
     rate: "{rate} kg per week",
     rateLabel: "Trend (4 weeks)",

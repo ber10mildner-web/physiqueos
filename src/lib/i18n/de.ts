@@ -1038,6 +1038,14 @@ const de = {
     set: "Zielgewicht festlegen",
     edit: "Ziel ändern",
   },
+  fastLoss: {
+    title: "Du nimmst zu schnell ab",
+    high: "Dein Gewicht fällt um {rate} kg pro Woche, das sind {pct} % deines Körpergewichts. Ab etwa 1 % pro Woche steigt das Risiko, Muskeln zu verlieren.",
+    faster: "Dein Gewicht fällt um {rate} kg pro Woche, geplant sind {planned} kg. Ein größeres Defizit als geplant kostet eher Muskeln.",
+    advice: "Iss etwa {kcal} kcal pro Tag mehr, halte das Eiweiß hoch und trainiere weiter schwer.",
+    adviceNoKcal: "Halte das Eiweiß hoch und trainiere weiter schwer.",
+    basis: "Aus deinem Gewichtstrend der letzten 4 Wochen. Auch die letzten 2 Wochen waren zu schnell.",
+  },
   forecast: {
     rate: "{rate} kg pro Woche",
     rateLabel: "Trend (4 Wochen)",

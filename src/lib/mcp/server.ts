@@ -207,6 +207,9 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
           trend_basis: coach.rate ? { weigh_ins: coach.rate.samples, span_days: coach.rate.spanDays } : null,
           smoothed_weight_kg: coach.current === null ? null : r2(coach.current),
           goal_forecast: coach.eta,
+          fast_loss_warning: coach.fastLoss
+            ? { level: coach.fastLoss.level, trend_kg_per_week: coach.fastLoss.kgPerWeek, pct_body_weight_per_week: coach.fastLoss.pctPerWeek, planned_kg_per_week: coach.fastLoss.plannedKgPerWeek, eat_more_kcal_per_day: coach.fastLoss.extraKcal, note: "Shown in the app: weight falls faster than is good for keeping muscle (over 1 % per week, or 1.5x the plan), sustained over the last 2 weeks." }
+            : null,
           measured_tdee: coach.tdee.ok
             ? { kcal: coach.tdee.estimate.tdee, avg_intake_kcal: coach.tdee.estimate.avgIntake, fully_logged_days: coach.tdee.estimate.loggedDays, confidence: coach.tdee.estimate.confidence, from: coach.tdee.estimate.from, to: coach.tdee.estimate.to }
             : { unavailable: coach.tdee.reason, fully_logged_days: coach.tdee.loggedDays, weigh_ins: coach.tdee.weighIns },

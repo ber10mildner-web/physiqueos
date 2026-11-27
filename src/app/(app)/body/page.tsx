@@ -15,6 +15,7 @@ import { CheckinCard } from "@/components/checkin-card";
 import { loadProgress } from "@/lib/progress-data";
 import { goalLabel } from "@/lib/body/goal-label";
 import { GoalStatus } from "@/components/goal-status";
+import { FastLossWarning } from "@/components/fast-loss-warning";
 import { loadCoach } from "@/lib/coach";
 import { WeightHistory } from "./weight-history";
 import { HealthForm, HealthList, HealthToday } from "./health";
@@ -91,7 +92,8 @@ export default async function BodyPage({ searchParams }: PageProps<"/body">) {
           )}
           <p className="mt-2 text-xs text-faint">{t.body.trendExplain}</p>
           {weights.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-3 space-y-3">
+              <FastLossWarning warning={coach.fastLoss} t={t} locale={locale} />
               <GoalStatus coach={coach} t={t} locale={locale} />
             </div>
           )}

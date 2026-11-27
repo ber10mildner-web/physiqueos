@@ -139,3 +139,8 @@ Gesammelte Ideen von Leo und Claude. Erledigtes wird abgehakt, nichts wird gelö
 - [ ] Echtes Widget ohne Umweg: braucht eine native App-Hülle (z. B. Capacitor), zusammen mit Apple Health / Health Connect angehen
 - [x] Supplements und Medikamente: alle X Tage und Zyklen (z. B. 3 Wochen nehmen, 1 Woche Pause), zusätzlich zu festen Wochentagen
 - [x] Vitamine: Hinweis „echter Wert eher höher“ nur noch einmal oben statt unter jedem Nährstoff
+
+## Fett verlieren, Muskeln erhalten (2026-11-27)
+
+- [x] Warnung, wenn das Gewicht schneller fällt als geplant (über 1 % Körpergewicht pro Woche oder 1,5-mal so schnell wie der Plan, auch in den letzten 2 Wochen): auf Start- und Körperseite, mit Vorschlag, wie viele kcal mehr; Claude bekommt die Warnung auch
+- [ ] Neue Bestleistungen im Training automatisch hervorheben (z. B. „Neuer Rekord: Bankdrücken 80 kg × 6“ direkt beim Eintragen und im Wochen-Check-in)

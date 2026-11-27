@@ -21,6 +21,7 @@ import { loadProgress } from "@/lib/progress-data";
 import { goalLabel } from "@/lib/body/goal-label";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
 import { GoalStatus } from "@/components/goal-status";
+import { FastLossWarning } from "@/components/fast-loss-warning";
 import { scheduleFor } from "@/lib/training/schedule";
 import { movingAverage, trendChange } from "@/lib/body/weight";
 import { formatNumber } from "@/lib/format";
@@ -192,6 +193,13 @@ export default async function DashboardPage() {
             <GoalStatus coach={coach} t={t} locale={locale} compact />
           </Card>
         </Link>
+
+        {/* on Sundays the check-in already says "too fast" */}
+        {progress?.verdict !== "too_fast" && progress?.verdict !== "muscle_risk" && (
+          <Link href="/body" className="block">
+            <FastLossWarning warning={coach.fastLoss} t={t} locale={locale} compact />
+          </Link>
+        )}
 
         {progress && <CheckinCard progress={progress} goalLabel={goalLabel(coach.goal, t)} t={t} locale={locale} variant="sunday" />}
 

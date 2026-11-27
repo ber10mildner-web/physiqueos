@@ -15,6 +15,7 @@ import { WINDOW_DAYS, estimateTdee, suggestTarget, type DayIntake, type TargetSu
 import { forecastLine, goalEta, wantedRate, weightRate, type Eta, type Rate } from "@/lib/body/forecast";
 import type { WeightPoint } from "@/lib/body/weight";
 import { goalAim } from "@/lib/body/goals";
+import { fastLoss, type FastLoss } from "@/lib/body/fast-loss";
 
 export interface Coach {
   goal: BodyGoal;
@@ -26,6 +27,8 @@ export interface Coach {
   /** Signed pace Sigma aims for (kg/week): from the goal type, else from goal weight and pace. */
   wanted: number | null;
   forecast: WeightPoint[];
+  /** Warning when the weight falls faster than is good for keeping muscle. */
+  fastLoss: FastLoss | null;
   tdee: TdeeResult;
   suggestion: TargetSuggestion | null;
   /** Goal in effect today. */
@@ -96,7 +99,7 @@ export function buildCoach(input: CoachInput): Coach {
           floorKcal: floorKcal(input.profile, current, today),
         })
       : null;
-  return { goal: bodyGoal, rate, current, eta, wanted, forecast: rate ? forecastLine(rate, goalKg, today) : [], tdee, suggestion, nutritionGoal: g };
+  return { goal: bodyGoal, rate, current, eta, wanted, forecast: rate ? forecastLine(rate, goalKg, today) : [], fastLoss: fastLoss({ points, today, rate, currentKg: current, wantedKgPerWeek: wanted }), tdee, suggestion, nutritionGoal: g };
 }
 
 /** Loads everything the coach needs. Pass already loaded data to save queries. */
