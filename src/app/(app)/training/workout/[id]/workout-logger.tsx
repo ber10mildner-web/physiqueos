@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { LineChart, Plus, TrendingUp, Trophy, X } from "lucide-react";
+import { ChevronRight, LineChart, Plus, TrendingUp, Trophy, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { fmt } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
@@ -138,6 +138,7 @@ export function ExerciseBlock({
   const [pr, setPr] = useState(false);
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
+  const [showStats, setShowStats] = useState(false);
 
   const w = Number(kg.replace(",", "."));
   const r = Number(reps);
@@ -186,12 +187,31 @@ export function ExerciseBlock({
             {target ? `${done}/${target.target_sets} ${t.training.sets} · ${repMin}–${repMax} ${t.training.reps}` : `${done} ${t.training.sets}`}
           </div>
         </div>
-        <Link href={`/training/exercise/${exercise.id}`} aria-label={t.training.progress} className="grid size-9 place-items-center rounded-xl text-muted hover:bg-surface-2">
+        <button
+          type="button"
+          aria-label={t.training.progress}
+          aria-expanded={showStats}
+          onClick={() => setShowStats((v) => !v)}
+          className={cx("grid size-9 place-items-center rounded-xl", showStats ? "bg-accent/15 text-accent" : "text-muted hover:bg-surface-2")}
+        >
           <LineChart className="size-4" />
-        </Link>
+        </button>
       </div>
 
-      {hint?.history && <StrengthChart compact history={hint.history} today={todayPoint(hint.history.metric)} />}
+      {/* statistics only on request, so the workout stays tidy */}
+      {showStats && (
+        <div className="mb-2 rounded-xl bg-surface-2/50 px-2 pb-2 pt-1">
+          {hint?.history && hint.history.points.length + (todayPoint(hint.history.metric) ? 1 : 0) >= 2 ? (
+            <StrengthChart compact history={hint.history} today={todayPoint(hint.history.metric)} />
+          ) : (
+            <p className="px-1 pt-1 text-xs text-muted">{t.training.statsTooFew}</p>
+          )}
+          <Link href={`/training/exercise/${exercise.id}`} className="mt-1 flex items-center justify-end gap-1 px-1 text-xs font-medium text-accent">
+            {t.training.statsDetails}
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
       {hint && hint.lastSets.length > 0 && (
         <p className="num mt-1 text-xs text-muted">
           {fmt(t.training.lastTime, {

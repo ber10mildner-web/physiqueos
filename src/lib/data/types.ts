@@ -249,6 +249,17 @@ export interface SkinLog {
   source: "manual" | "claude";
 }
 
+/** Tags for day notes (journal); same list as the check in the day_notes migration. */
+export const DAY_TAGS = ["sick", "pain", "poor_sleep", "stress", "travel", "alcohol", "eating_out"] as const;
+export type DayTag = (typeof DAY_TAGS)[number];
+
+export interface DayNote {
+  entry_date: string;
+  note: string | null;
+  tags: DayTag[];
+  source: "manual" | "claude";
+}
+
 export const MEDICATION_KINDS = ["medication", "supplement", "skincare"] as const;
 export type MedicationKind = (typeof MEDICATION_KINDS)[number];
 
