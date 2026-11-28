@@ -5,6 +5,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { getDiary, getGoalOn, getLoggedDates, getProfile } from "@/lib/data";
 import { getQuickPicks, getWater } from "@/lib/data/tracking";
 import { listMealTemplates } from "@/lib/data/meal-templates";
+import { getDayNote } from "@/lib/data/day-notes";
+import { DayNoteCard } from "@/components/day-note-card";
 import { getToday } from "@/lib/auth";
 import { PLAN_AHEAD_DAYS, addDays, formatDate, isIsoDate, startOfWeek } from "@/lib/dates";
 import { sumItems } from "@/lib/nutrition/calc";
@@ -28,7 +30,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
   await ensureRoutines(today);
   // fixed meals also show on the days ahead in this week strip, so the rest of a day can be planned around them
   await ensurePlannedMeals([...Array.from({ length: 7 }, (_, i) => addDays(monday, i)), date], today);
-  const [entries, goal, water, profile, picks, logged, fixed] = await Promise.all([
+  const [entries, goal, water, profile, picks, logged, fixed, dayNote] = await Promise.all([
     getDiary(date),
     getGoalOn(date),
     getWater(date),
@@ -36,6 +38,7 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
     getQuickPicks(today),
     getLoggedDates(monday, addDays(monday, 6)),
     listMealTemplates(),
+    getDayNote(date),
   ]);
   const totals = sumItems(entries);
   const sources = entries.map(({ food_name, amount_g, nutrients_per_100g }) => ({ food_name, amount_g, nutrients_per_100g }));
@@ -89,6 +92,8 @@ export default async function NutritionPage({ searchParams }: PageProps<"/nutrit
             <WaterCard date={date} totalMl={water} targetMl={profile.water_target_ml ?? 2500} />
           </Card>
         )}
+
+        <DayNoteCard date={date} initial={dayNote} />
 
         <Link href="/nutrition/recipes" className="block">
           <Card className="flex items-center gap-3 transition hover:bg-surface-2">

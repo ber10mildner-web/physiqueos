@@ -37,7 +37,7 @@ beforeAll(async () => {
   `);
   const sql = readFileSync(path.join(import.meta.dirname, "../supabase/migrations/20261119000000_init.sql"), "utf8");
   await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
-  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql", "20261124000100_label_off_cache.sql", "20261125000000_fixed_meals_water.sql", "20261126000000_medication_schedule.sql"]) {
+  for (const f of ["20261120000000_grants.sql", "20261120000100_recipes_training_api.sql", "20261120000200_garmin.sql", "20261120000300_service_role_grants.sql", "20261120000400_sigma.sql", "20261121000000_routines.sql", "20261122000000_today_week.sql", "20261122000100_meal_slots.sql", "20261123000000_entry_order.sql", "20261123000100_ai_usage.sql", "20261123000200_waitlist.sql", "20261123000300_body_goal.sql", "20261124000000_body_goal_type.sql", "20261124000100_label_off_cache.sql", "20261125000000_fixed_meals_water.sql", "20261126000000_medication_schedule.sql", "20261128000000_day_notes.sql"]) {
     await db.exec(readFileSync(path.join(import.meta.dirname, "../supabase/migrations", f), "utf8"));
   }
   await db.exec(`
@@ -245,6 +245,15 @@ describe("schema", () => {
       const seen = await as(B, () => db.query(`select * from public.${table}`));
       expect(seen.rows, table).toHaveLength(0);
     }
+  });
+
+  it("keeps day notes private and only accepts known tags", async () => {
+    await as(A, () => db.exec(`insert into public.day_notes (user_id, entry_date, note, tags) values ('${A}', '2026-11-27', 'Krampf im Arm', '{pain}')`));
+    await expect(as(A, () => db.exec(`insert into public.day_notes (user_id, entry_date, tags) values ('${A}', '2026-11-28', '{hungover}')`))).rejects.toThrow(/check constraint/);
+    await expect(as(A, () => db.exec(`insert into public.day_notes (user_id, entry_date, note) values ('${A}', '2026-11-27', 'zweite')`))).rejects.toThrow(/duplicate key/);
+    await expect(as(B, () => db.exec(`insert into public.day_notes (user_id, entry_date, note) values ('${A}', '2026-11-29', 'x')`))).rejects.toThrow(/row-level security/);
+    const seen = await as(B, () => db.query("select * from public.day_notes"));
+    expect(seen.rows).toHaveLength(0);
   });
 
   it("keeps waist measurements private and checks body goal values", async () => {

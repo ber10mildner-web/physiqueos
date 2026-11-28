@@ -9,6 +9,8 @@ import { claudeLink } from "@/lib/claude-link";
 import { formatNumber } from "@/lib/format";
 import { Card, Page, PageHeader, ProgressBar, SectionTitle, buttonClass, cx } from "@/components/ui";
 import { NutrientGaps } from "@/components/nutrient-gaps";
+import { DayTagChips } from "@/components/day-note-card";
+import { getDayNotes } from "@/lib/data/day-notes";
 
 export default async function WeekPage({ searchParams }: PageProps<"/week">) {
   const { t, locale } = await getI18n();
@@ -16,7 +18,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
   const sp = await searchParams;
   const thisMonday = startOfWeek(today);
   const monday = isIsoDate(sp.start) && sp.start <= today ? startOfWeek(sp.start) : thisMonday;
-  const w = await weekSummary(monday, today, undefined, locale === "en" ? "en" : "de");
+  const [w, notes] = await Promise.all([weekSummary(monday, today, undefined, locale === "en" ? "en" : "de"), getDayNotes(monday, addDays(monday, 6))]);
   const n = (v: number | null, d = 0) => (v === null ? "–" : formatNumber(v, locale, d));
   const range = `${formatDate(w.monday, locale, { day: "numeric", month: "short" })} – ${formatDate(w.sunday, locale, { day: "numeric", month: "short" })}`;
   const maxKcal = Math.max(1, ...w.days.map((d) => Math.max(d.kcal, d.target ?? 0, d.burn ?? 0)));
@@ -113,6 +115,23 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
               <Stat label={t.week.sleepHours} value={w.health.sleepMin === null ? "–" : formatNumber(w.health.sleepMin / 60, locale, 1)} />
               <Stat label={t.health.steps} value={n(w.health.steps)} />
             </div>
+          </Card>
+        )}
+
+        {notes.length > 0 && (
+          <Card>
+            <SectionTitle>{t.dayNote.weekTitle}</SectionTitle>
+            <ul className="space-y-2">
+              {[...notes].reverse().map((d) => (
+                <li key={d.entry_date}>
+                  <Link href={`/nutrition?date=${d.entry_date}`} className="block rounded-xl bg-surface-2 px-3 py-2.5 transition hover:bg-surface-3">
+                    <div className="text-xs font-medium text-muted">{formatDate(d.entry_date, locale, { weekday: "long", day: "numeric", month: "short" })}</div>
+                    <DayTagChips tags={d.tags} className="mt-1.5" />
+                    {d.note && <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-snug">{d.note}</p>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </Card>
         )}
 

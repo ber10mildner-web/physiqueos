@@ -10,6 +10,7 @@ import { getWaterRange } from "@/lib/data/tracking";
 import { listCardio, listExercises, listWorkouts } from "@/lib/data/training";
 import { getHealthRange } from "@/lib/data/health";
 import { getMedicationLogs, getSkinRange } from "@/lib/data/wellbeing";
+import { getDayNotes } from "@/lib/data/day-notes";
 import { withKcalEstimates } from "@/lib/cardio";
 import { burnForRange } from "@/lib/burn-data";
 import { isoWeekday } from "@/lib/nutrition/goal-days";
@@ -23,7 +24,7 @@ import { records, volume, workoutMinutes } from "@/lib/training/calc";
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 export async function periodSummary(from: string, to: string, ctx: Ctx) {
-  const [entries, goals, weights, water, workouts, rawCardio, health, exercises, skin, medLogs] = await Promise.all([
+  const [entries, goals, weights, water, workouts, rawCardio, health, exercises, skin, medLogs, notes] = await Promise.all([
     getDiaryRange(from, to, ctx),
     getGoalsBetween(from, to, ctx),
     getWeights(addDays(from, -6), ctx),
@@ -34,6 +35,7 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
     listExercises(ctx),
     getSkinRange(from, to, ctx),
     getMedicationLogs(from, to, ctx),
+    getDayNotes(from, to, ctx),
   ]);
   const cardio = await withKcalEstimates(rawCardio, ctx);
   const goalFor = (d: string) => {
@@ -118,5 +120,6 @@ export async function periodSummary(from: string, to: string, ctx: Ctx) {
     health,
     skin,
     medication_taken: medLogs.map((l) => ({ date: l.entry_date, name: l.name, dose: l.dose })),
+    day_notes: [...notes].reverse().map((d) => ({ date: d.entry_date, tags: d.tags, note: d.note })),
   };
 }

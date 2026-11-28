@@ -23,9 +23,10 @@ import { workoutMinutes } from "@/lib/training/calc";
 import { addCardio, addSet, finishWorkout, getCardio, listCardio, listExercises, listPlans, listWorkouts, rateTraining, setCardioMachine, startWorkout } from "@/lib/data/training";
 import { getHealthRange, upsertHealth } from "@/lib/data/health";
 import { getMedicationLogs, getSkinRange, listMedications, logMedicationByName, upsertSkin } from "@/lib/data/wellbeing";
+import { addToDayNote, getDayNote } from "@/lib/data/day-notes";
 import { withKcalEstimates } from "@/lib/cardio";
 import { PHOTO_BUCKET } from "@/lib/data";
-import { CARDIO_ACTIVITIES, SKIN_AREAS } from "@/lib/data/types";
+import { CARDIO_ACTIVITIES, DAY_TAGS, SKIN_AREAS } from "@/lib/data/types";
 import { periodSummary } from "@/lib/summary";
 import { lookupOffProduct, searchOffCached } from "@/lib/food-sources/off-cache-store";
 import { searchUsda } from "@/lib/food-sources/usda";
@@ -67,6 +68,8 @@ Nutrition goals can differ by weekday (e.g. more calories on cardio days): get_d
 Cardio machine photos: when the user asks you to read their machine/Stairmaster photos, call list_cardio_photos, look at each with get_cardio_photo, read only values that are visible on the display (time, level, floors, steps, kcal), and save them with set_cardio_machine_data. Sigma then combines them with the Garmin data into a best calorie estimate ("kcal_estimate" in get_training).
 
 Recipe ideas: list_recipe_ideas has simple dishes with tags (protein, fiber, light, skin, iron, omega3, calcium, vitamin_d, vegetarian, vegan) and short learning notes. Suggest ones that fit the user's goals or nutrient gaps; add_recipe_idea copies one into their recipes (ask first), then log_recipe. Say that bioavailability notes are rough rules of thumb.
+
+Day notes: the user keeps an optional journal per day (day_notes in get_period_summary, day_note in get_day) with tags (sick, pain, poor_sleep, stress, travel, alcohol, eating_out). In reviews, link tagged days to weight (e.g. water after alcohol or eating out), training (skipped or lighter sessions, lower ratings) and nutrition. When the user tells you about something special on a day (illness, pain, little sleep, a changed training plan because of it), offer to save it with log_day_note; it adds to the existing note and never overwrites what the user wrote.
 
 Skin and medication: log_skin and log_medication record what the user tells you. You may point out patterns, but never give medical advice or suggest changing medication; refer to a doctor.`;
 
@@ -221,15 +224,16 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
     },
   );
 
-  tool("get_day", "All diary entries of one day with totals (per nutrient incl. data coverage), goal and water.", z.object({ date: date.optional() }), async ({ date: d }: { date?: string }) => {
+  tool("get_day", "All diary entries of one day with totals (per nutrient incl. data coverage), goal, water and the user's day note (tags + text).", z.object({ date: date.optional() }), async ({ date: d }: { date?: string }) => {
     const day = d ?? today();
     await ensurePlannedMeals([day], today(), ctx); // a day ahead already holds its fixed meals, as in the app
-    const [entries, goal, water] = await Promise.all([getDiary(day, ctx), getGoalOn(day, ctx), getWater(day, ctx)]);
+    const [entries, goal, water, note] = await Promise.all([getDiary(day, ctx), getGoalOn(day, ctx), getWater(day, ctx), getDayNote(day, ctx)]);
     const totals = sumItems(entries);
     return json({
       date: day,
       goal,
       water_ml: water,
+      day_note: note ? { tags: note.tags, note: note.note } : null,
       totals: Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, { value: Math.round(totals[k].value * 10) / 10, unit: NUTRIENTS[k].unit, entries_with_data: `${totals[k].known}/${totals[k].of}` }])),
       entries: entries.map((e) => ({ id: e.id, meal: e.meal, name: e.food_name, brand: e.food_brand, amount_g: e.amount_g, source: e.source, kcal: e.nutrients_per_100g.energy_kcal !== undefined ? Math.round((e.nutrients_per_100g.energy_kcal * e.amount_g) / 100) : null })),
     });
@@ -237,7 +241,7 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
 
   tool(
     "get_period_summary",
-    "Summary for a date range (max 92 days): daily calories/macros/fibre/water, nutrient averages with data coverage, goals, weight with 7-day average, workouts with sets and estimated 1RM, cardio, sleep/HRV. Use for weekly reviews.",
+    "Summary for a date range (max 92 days): daily calories/macros/fibre/water, nutrient averages with data coverage, goals, weight with 7-day average, workouts with sets and estimated 1RM, cardio, sleep/HRV, skin, medication and the user's day notes with tags. Use for weekly reviews.",
     z.object({ from: date, to: date }),
     async ({ from, to }: { from: string; to: string }) => {
       if (from > to) return fail("from must be <= to");
@@ -546,6 +550,18 @@ export function registerTools(server: any, ctx: Ctx, canWrite: boolean, timeZone
     async (a: { date?: string; score: number; areas?: (typeof SKIN_AREAS)[number][]; note?: string }) => {
       const res = await upsertSkin({ date: a.date ?? today(), score: a.score, areas: a.areas ?? [], note: a.note ?? null, source: "claude" }, ctx);
       return res.ok ? json({ ok: true }) : fail(res.error);
+    },
+    true,
+  );
+
+  tool(
+    "log_day_note",
+    "Add to the user's note for a day (journal: illness, pain, little sleep, travel …) and/or add tags. The text is appended to the existing note and tags are merged; set replace=true only when the user asks to rewrite the whole note. Returns the saved note.",
+    z.object({ date: date.optional(), note: z.string().max(2000).optional(), tags: z.array(z.enum(DAY_TAGS)).optional(), replace: z.boolean().optional() }),
+    async (a: { date?: string; note?: string; tags?: (typeof DAY_TAGS)[number][]; replace?: boolean }) => {
+      if (!a.note?.trim() && !a.tags?.length && !a.replace) return fail("Pass a note or at least one tag");
+      const res = await addToDayNote({ date: a.date ?? today(), note: a.note ?? null, tags: a.tags ?? [], replace: a.replace, source: "claude" }, ctx);
+      return res.ok ? json({ ok: true, day_note: res.note }) : fail(res.error);
     },
     true,
   );

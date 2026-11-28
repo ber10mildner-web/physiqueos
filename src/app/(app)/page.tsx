@@ -7,6 +7,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n";
 import { getDiaryRange, getGoalOn, getGoalsBetween, getProfile, getWeights } from "@/lib/data";
 import { getWater } from "@/lib/data/tracking";
+import { getDayNote } from "@/lib/data/day-notes";
+import { DayNoteCard } from "@/components/day-note-card";
 import { listCardio, listCardioTemplates, listPlans, listWorkouts } from "@/lib/data/training";
 import { burnForRange } from "@/lib/burn-data";
 import { getTimeZone, getToday } from "@/lib/auth";
@@ -40,7 +42,7 @@ export default async function DashboardPage() {
   // 28 days back for the calorie check; also covers this week and the nutrient hints.
   const from = addDays(today, -28);
   await ensureRoutines(today);
-  const [entries, goal, weights, profile, water, plans, templates, workouts, cardio, goals] = await Promise.all([
+  const [entries, goal, weights, profile, water, plans, templates, workouts, cardio, goals, dayNote] = await Promise.all([
     getDiaryRange(from, today),
     getGoalOn(today),
     getWeights(addDays(today, -40)),
@@ -51,6 +53,7 @@ export default async function DashboardPage() {
     listWorkouts({ from: monday, limit: 50 }),
     listCardio({ from: today }),
     getGoalsBetween(from, today),
+    getDayNote(today),
   ]);
   const todays = entries.filter((e) => e.entry_date === today);
   const totals = sumItems(todays);
@@ -123,6 +126,8 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        <DayNoteCard date={today} initial={dayNote} />
 
         <Card>
           <SectionTitle action={<Link href="/training" className="text-xs text-muted hover:text-text">{t.schedule.all}</Link>}>{t.schedule.title}</SectionTitle>
